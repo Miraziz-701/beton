@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <title>Chiqim qo‘shish</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+<div class="container py-4">
+  <div class="card shadow-sm">
+    <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
+      <h5 class="m-0">➕ Chiqim qo‘shish</h5>
+      <a href="{% url 'umumiy_chiqim' %}" class="btn btn-sm btn-outline-light">⬅️ Ortga</a>
+    </div>
+    <div class="card-body">
+        <form method="post" action="{% url 'add_chiqim' %}">
+            {% csrf_token %}
+            
+            <!-- Chiqim turi -->
+            <div class="mb-3">
+                <label for="{{ form.chiqim_turi.id_for_label }}" class="form-label">Chiqim turi</label>
+                {{ form.chiqim_turi }}
+            </div>
+            
+            <div class="mb-3" id="yetkazuvchiWrapper" style="display: none;">
+                <label for="{{ form.yetkazuvchi.id_for_label }}" class="form-label">Yetkazib beruvchi</label>
+                {{ form.yetkazuvchi }}
+            </div>
+
+            <div class="mb-3" id="ishchiWrapper" style="display: none;">
+                <label for="{{ form.ishchi.id_for_label }}" class="form-label">Ishchi</label>
+                {{ form.ishchi }}
+            </div>
+
+            <!-- Summasi -->
+            <div class="mb-3">
+                <label for="{{ form.summa.id_for_label }}" class="form-label">Summasi (so‘m)</label>
+                {{ form.summa }}
+            </div>
+
+            <!-- To‘lov turi -->
+            <div class="mb-3">
+                <label for="{{ form.tolov_turi.id_for_label }}" class="form-label">To‘lov turi</label>
+                <div>
+                    {% for radio in form.tolov_turi %}
+                        <div class="form-check form-check-inline">
+                            {{ radio.tag }}
+                            <label class="form-check-label">{{ radio.choice_label }}</label>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <!-- Izoh -->
+            <div class="mb-3">
+                <!-- Checkbox -->
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="izohCheckbox">
+                    <label class="form-check-label" for="izohCheckbox">
+                    Izoh qo‘shish
+                    </label>
+                </div>
+
+                <!-- Textarea (default yashirin) -->
+                <div id="izohContainer" class="mt-2 d-none">
+                    <label for="{{ form.izoh.id_for_label }}" class="form-label">Izoh</label>
+                    {{ form.izoh }}
+                </div>
+            </div>
+
+            <!-- Sana va vaqt -->
+            <div class="mb-3">
+                <!-- Tugma -->
+                <button type="button" id="toggleSanaBtn" class="btn btn-outline-primary btn-sm">
+                    Sana o‘zgartirish
+                </button>
+
+                <!-- Input (default yashirin) -->
+                <div id="sanaContainer" class="mt-2 d-none">
+                    <label for="{{ form.vaqti.id_for_label }}" class="form-label">Sana va vaqt</label>
+                    {{ form.vaqti }}
+                </div>
+            </div>
+
+
+            <!-- Tugmalar -->
+            <div class="d-flex justify-content-end gap-2">
+                <button type="reset" class="btn btn-outline-secondary">Bekor qilish</button>
+                <button type="submit" class="btn btn-danger">💾 Saqlash</button>
+            </div>
+        </form>
+    </div>
+  </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const chiqimTuri = document.getElementById("chiqimTuri");
+        const yetkazuvchiWrapper = document.getElementById("yetkazuvchiWrapper");
+        const ishchiWrapper = document.getElementById("ishchiWrapper");
+
+        function toggleInputs() {
+            let tanlangan = chiqimTuri.options[chiqimTuri.selectedIndex].text.toLowerCase();
+            
+            if (tanlangan.includes("yetkazib")) {
+                yetkazuvchiWrapper.style.display = "block";
+            } else {
+                yetkazuvchiWrapper.style.display = "none";
+            }
+
+            if (tanlangan.includes("ishchi")) {
+                ishchiWrapper.style.display = "block";
+            } else {
+                ishchiWrapper.style.display = "none";
+            }
+        }
+
+        chiqimTuri.addEventListener("change", toggleInputs);
+        toggleInputs(); // sahifa yuklanganda tekshiradi
+    });
+
+    document.addEventListener("DOMContentLoaded", function() {
+        const checkbox = document.getElementById("izohCheckbox");
+        const izohContainer = document.getElementById("izohContainer");
+
+        checkbox.addEventListener("change", function() {
+        if (this.checked) {
+            izohContainer.classList.remove("d-none");
+        } else {
+            izohContainer.classList.add("d-none");
+        }
+        });
+    });
+
+    document.addEventListener("DOMContentLoaded", function() {
+        const toggleBtn = document.getElementById("toggleSanaBtn");
+        const sanaContainer = document.getElementById("sanaContainer");
+
+        toggleBtn.addEventListener("click", function() {
+        sanaContainer.classList.toggle("d-none");
+
+        if (!sanaContainer.classList.contains("d-none")) {
+            toggleBtn.textContent = "❌ Bekor qilish";
+        } else {
+            toggleBtn.textContent = "Sana o‘zgartirish";
+        }
+        });
+    });
+
+    document.addEventListener("DOMContentLoaded", function() {
+        const summaInput = document.getElementById("id_summa");
+
+        summaInput.addEventListener("input", function(e) {
+            let value = this.value.replace(/\s/g, "");
+            if (!isNaN(value) && value !== "") {
+                this.value = value.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+            }
+        });
+
+        // POST yuborishdan oldin probelni olib tashlash
+        summaInput.form.addEventListener("submit", function() {
+            summaInput.value = summaInput.value.replace(/\s/g, "");
+        });
+    });
+</script>
+
+</body>
+</html>

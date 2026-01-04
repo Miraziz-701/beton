@@ -1,0 +1,380 @@
+{% load custom_filters %}
+
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <title>Hisob-kitob jadvali</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background: #f8f9fa;
+    }
+    .card {
+      border-radius: 1rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    table thead {
+      background-color: #343a40;
+      color: #fff;
+    }
+    .summary-box {
+      background: #fff3cd;
+      border: 1px solid #ffeeba;
+      border-radius: 0.5rem;
+      padding: 15px;
+      margin-top: 20px;
+      font-size: 1.1rem;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <div class="container my-4">
+            <div class="card shadow-sm p-3">
+                <h5 class="mb-3 text-primary">🔎 Filtrlar</h5>
+                <form class="row g-3" method="get">
+                    <!-- Sana oraliq tanlash -->
+                    <div class="col-md-3">
+                        <label for="from_date" class="form-label">Boshlanish sanasi</label>
+                        <input type="date" id="from_date" name="from_date" class="form-control" value="{{ selected_from }}" onchange="this.form.submit()">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="to_date" class="form-label">Tugash sanasi</label>
+                        <input type="date" id="to_date" name="to_date" class="form-control" value="{{ selected_to }}" onchange="this.form.submit()">
+                    </div>
+
+                    <!-- Mijoz tanlash -->
+                    <div class="col-md-4">
+                        <label class="form-label">Xaridor</label>
+                        <input type="text" list="xaridorlar" name="xaridor" class="form-control" placeholder="Xaridorni kiriting" onchange="this.form.submit()" value="{{ selected_xaridor }}">
+                        <datalist id="xaridorlar">
+                            {% for xaridor in xaridorlar %}
+                                <option value="{{ xaridor.ism_familya }}"></option>
+                            {% endfor %}
+                        </datalist>
+                    </div>
+                </form>
+            </div>
+  </div>
+    
+  <div class="container my-4">
+            <div class="row g-4">
+                
+                <div class="col-md-3">
+                    <div class="card text-center shadow border-0">
+                        <div class="card-body bg-light rounded">
+                            <h4 class="text-dark mb-2">📊 Jami</h4>
+                            <h2 class="fw-bold text-dark">
+                                {{ jammi_mijoz_summa|space_separate }}
+                            </h2>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Jami Berilgan -->
+                <div class="col-md-3">
+                    <div class="card text-center shadow border-0">
+                        <div class="card-body bg-light rounded">
+                            <h4 class="text-success mb-2">💵 Jami Berilgan</h4>
+                            <h2 class="fw-bold text-success">
+                                {{ jammi_berilgan_summa|space_separate }}
+                            </h2>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Jami Qarz -->
+                <div class="col-md-3">
+                    <div class="card text-center shadow border-0">
+                        <div class="card-body bg-light rounded">
+                            <h4 class="text-danger mb-2">💰 Jami Qarz</h4>
+                            <h2 class="fw-bold text-danger">
+                                {{ jami_qolgan_summa|space_separate }}
+                            </h2>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Jami Foyda -->
+                <div class="col-md-3">
+                    <div class="card text-center shadow border-0">
+                        <div class="card-body bg-light rounded">
+                        <h4 class="text-primary mb-2">📈 Jami Foyda</h4>
+                        <h2 class="fw-bold text-primary">
+                            {{ jami_foyda|space_separate }}
+                        </h2>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+  </div>
+
+  <div class="container">
+    <div class="card p-4">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="mb-0">Xaridorlar kirimi</h3>
+        <a href="{% url 'kirim_hisobot' %}" class="btn btn-outline-danger">
+                    Hisobot
+                </a>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle table-bordered">
+          <thead>
+            <tr>
+              <th>Marka</th>
+              <th>Mijoz</th>
+              <th>Kim orqali kelgani</th>
+              <th>Obyekti</th>
+              <th>Mashina raqami</th>
+              <th>Qo. soni</th>
+              <th class="w-25">Mijoz narxi</th>
+              <th class="w-25">Jami</th>
+              <th>Berilgan summa</th>
+              <th>Qolgan summa</th>
+              <th>Sana</th>
+              <th>Pul kiritish</th>
+              <th>Detal</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for zakaz in zakazlar %}
+                <tr>
+                    <td>
+                        {% if zakaz.maxsulot_markasi %}
+                            {{ zakaz.maxsulot_markasi }}
+                        {% else %}
+                            {{ zakaz.xomashyo }}
+                        {% endif %}
+                    </td>
+                    <td>
+                        {{ zakaz.mijoz }}
+                    </td>
+                    <td>
+                        {{ zakaz.kim_tomonidan_jonatilgani }}
+                    </td>
+                    <td>
+                        {{ zakaz.obyekt_nomi }}
+                    </td>
+                    <td>
+                        {{ zakaz.mashina }}
+                    </td>
+                    <td>
+                        {{ zakaz.qogozdagi_maxsulot_soni }}
+                    </td>
+                    <td id="zakaz-{{ zakaz.id }}">
+                        {% if zakaz.mijoz_narx_qoyildi %}
+                            <span class="narx-value">{{ zakaz.mijoz_qoygan_narx|space_separate }}</span>
+                        {% else %}
+                            <div class="gap-2">
+                              <input type="text" 
+                                    class="form-control form-control-sm narx-input"
+                                    data-id="{{ zakaz.id }}" 
+                                    placeholder="Narx kiriting">
+                              <button type="button" class="btn btn-success save-narx btn-sm" data-id="{{ zakaz.id }}">✅</button>
+                          </div>
+                        {% endif %}
+
+                        {% if not zakaz.qoshimcha_xarajat %}
+                            <a href="{% url 'add_otkat' zakaz.id %}" class="btn btn-primary btn-sm">Otkat qo'shish</a>
+                        {% endif %}
+                    </td>
+                    <td class="jami-value" data-id="{{ zakaz.id }}">
+                        {{ zakaz.mijoz_jami_qoygan_narx|space_separate }}
+                        <br>
+                        {{ zakaz.maxsulot_tan_narx|space_separate }}
+                        <br>
+                        {{ zakaz.foyda|space_separate }}
+                    </td>
+                    
+                    <td>
+                        {{ zakaz.mijoz_bergan_narx|space_separate }}
+                    </td>
+                    <td class="qolgan-value" data-id="{{ zakaz.id }}">
+                        {{ zakaz.qolgan_summa|space_separate }}
+                    </td>
+                    <td>
+                        {{ zakaz.date|date:"d-m-Y H:i" }}
+                    </td>
+
+                    <td>
+                      <a href="{% url 'enter_summa_mijoz' zakaz.id %}" class="btn btn-sm btn-secondary">Kiritish</a>
+                    </td>
+
+                    <td>
+                      <button class="btn btn-sm btn-info show-detail" data-id="{{ zakaz.id }}">
+                        🔎  Detallar
+                      </button>
+
+                      <div class="modal fade" id="detailModal" tabindex="-1">
+                          <div class="modal-dialog modal-lg">
+                            <div class="modal-content">
+                              <div class="modal-header">
+                                <h5 class="modal-title">Hisob tafsilotlari</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                              </div>
+                              <div class="modal-body">
+
+                                <!-- Jadval -->
+                                <table class="table table-bordered table-sm">
+                                  <thead class="table-light">
+                                    <tr>
+                                      <th>#</th>
+                                      <th>Xomashyo</th>
+                                      <th>Miqdori</th>
+                                      <th>Narx donasi</th>
+                                      <th>Jami narxi</th>
+                                      <th>Sana</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody id="detail-table-body">
+                                    <!-- JS orqali to‘ldiriladi -->
+                                  </tbody>
+                                </table>
+
+                                <!-- Qo‘shimcha blok -->
+                                <div class="mt-3 p-3 bg-light border rounded" id="extra-costs">
+                                  <p><strong>📦 Maxsulot tan narx:</strong> <span id="tanNarx">0</span> so‘m</p>
+                                  <p><strong>🚛 Haydovchi narx:</strong> <span id="haydovchiNarx">0</span> so‘m</p>
+                                  <p><strong>↩️ Otkat narx:</strong> <span id="otkatNarx">0</span> so‘m</p>
+                                  <p style="display: none;" id="otkatIzohRow"><strong>Izoh:</strong> <span id="otkatIzoh"></span></p>
+                                </div>
+
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                    </td>
+
+                    
+
+                </tr>
+            {% endfor %}
+            
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</body>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    // ✅ tugmani bosganda ishlaydi
+    document.querySelectorAll(".save-narx").forEach(function(btn) {
+        btn.addEventListener("click", function() {
+            saveNarx(this.dataset.id);
+        });
+    });
+
+    // ⛔️ Enter bosilsa input hech nima qilmaydi (submit bo‘lmaydi)
+    document.querySelectorAll(".narx-input").forEach(function(inp) {
+        inp.addEventListener("keypress", function(e) {
+            if (e.key === "Enter") {
+                e.preventDefault(); // Enter bosilganda hech nima qilmasin
+            }
+        });
+    });
+
+    // Funksiya – narxni saqlash
+    function saveNarx(zakazId) {
+        let input = document.querySelector(`.narx-input[data-id='${zakazId}']`);
+        let narx = input.value;
+
+        fetch(`/set/${zakazId}/summa/?mijoz_narx=${narx}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    let cell = document.getElementById(`zakaz-${zakazId}`);
+                    cell.innerHTML = `<span class="narx-value">${data.mijoz_qoygan_narx.toLocaleString()}</span>`;
+
+                    document.querySelector(`.jami-value[data-id='${zakazId}']`)
+                        .innerText = data.jami.toLocaleString();
+
+                    document.querySelector(`.qolgan-value[data-id='${zakazId}']`)
+                        .innerText = data.qolgan.toLocaleString();
+                } else {
+                    alert("Xatolik yuz berdi!");
+                }
+            });
+    }
+  });
+
+
+  document.addEventListener("DOMContentLoaded", function() {
+    document.querySelectorAll(".show-detail").forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        let zakazId = this.dataset.id;
+
+        fetch(`/maxsulot/${zakazId}/`)
+          .then(res => res.json())
+          .then(data => {
+            let tbody = document.getElementById("detail-table-body");
+            tbody.innerHTML = "";
+
+            let jamiTanNarx = 0;
+
+            data.details.forEach((d, index) => {
+              tbody.innerHTML += `
+                <tr>
+                  <td>${index + 1}</td>
+                  <td>${d.nomi}</td>
+                  <td>${d.miqdor}</td>
+                  <td>${d.narx_donasi.toLocaleString()}</td>
+                  <td>${d.jami_narxi.toLocaleString()}</td>
+                  <td>${d.vaqti}</td>
+                </tr>
+              `;
+              jamiTanNarx += d.jami_narxi;
+            });
+
+            jamiTanNarx += data.haydovchi_narx
+            jamiTanNarx += data.otkat_narx
+
+            // Qo‘shimcha narxlarni JS orqali hisoblab qo‘yish
+            document.getElementById("tanNarx").innerText = jamiTanNarx.toLocaleString();
+            document.getElementById("haydovchiNarx").innerText = (data.haydovchi_narx).toLocaleString(); // backenddan kelsa shu yerga qo‘yasiz
+            document.getElementById("otkatNarx").innerText = (data.otkat_narx). toLocaleString(); // backenddan kelsa shu yerga qo‘yasiz
+
+            if (data.otkat_izoh && data.otkat_izoh.trim() !== "") {
+                document.getElementById("otkatIzoh").innerText = data.otkat_izoh;
+                document.getElementById("otkatIzohRow").style.display = "block"; 
+            } else {
+                document.getElementById("otkatIzohRow").style.display = "none"; 
+            }
+
+
+            // Modalni ochish
+            var myModal = new bootstrap.Modal(document.getElementById("detailModal"));
+            myModal.show();
+          });
+      });
+    });
+  });
+
+  function formatNumberInput(input) {
+      let value = input.value.replace(/\s/g, ''); // eski probellarni olib tashlaymiz
+      if (!isNaN(value) && value.length > 0) {
+          input.value = value.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+      } else {
+          input.value = '';
+      }
+  }
+
+  // Barcha narx inputlarga ulash
+  document.querySelectorAll('.narx-input').forEach(input => {
+      input.addEventListener('input', function () {
+          formatNumberInput(this);
+      });
+  });
+
+
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+
+
+
+</html>

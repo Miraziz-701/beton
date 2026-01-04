@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kirim/Chiqim Narxlari</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #1a2a6c);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background-color: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+            padding: 30px;
+            width: 100%;
+            max-width: 800px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        h1 {
+            color: white;
+            margin-bottom: 30px;
+            font-size: 2.5rem;
+            text-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+        }
+        
+        .buttons-container {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 200px;
+            height: 200px;
+            border-radius: 20px;
+            color: white;
+            font-weight: bold;
+            font-size: 1.8rem;
+            cursor: pointer;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+            border: none;
+            text-transform: uppercase;
+        }
+        
+        .btn i {
+            font-size: 3.5rem;
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-income {
+            background: linear-gradient(135deg, #00b09b, #96c93d);
+        }
+        
+        .btn-expense {
+            background: linear-gradient(135deg, #ff416c, #ff4b2b);
+        }
+
+        .btn-zakaz {
+            background-image: linear-gradient(135deg, blue, dodgerblue);
+        }
+        
+        .btn:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 25px rgba(0, 0, 0, 0.3);
+        }
+        
+        .btn:hover i {
+            transform: scale(1.2);
+        }
+        
+        .btn:active {
+            transform: translateY(-5px) scale(0.98);
+        }
+        
+        .info-container {
+            display: flex;
+            gap: 30px;
+            margin-top: 20px;
+            justify-content: center;
+        }
+        
+        .info-box {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            width: 350px;
+            text-align: left;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .info-header {
+            color: white;
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .price-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .price-item:last-child {
+            border-bottom: none;
+        }
+        
+        .price-label {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 1.1rem;
+        }
+        
+        .price-value {
+            color: white;
+            font-size: 1.3rem;
+            font-weight: bold;
+        }
+        
+        .income-value {
+            color: #96c93d;
+        }
+        
+        .expense-value {
+            color: #ff4b2b;
+        }
+        
+        .highlight {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+            padding: 5px 10px;
+            font-weight: bold;
+        }
+        
+        .footer {
+            margin-top: 30px;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.9rem;
+        }
+
+        .info-header span {
+            font-size: 1.8rem;
+        }
+        
+        @media (max-width: 850px) {
+            .info-container {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .info-box {
+                width: 100%;
+                max-width: 500px;
+            }
+        }
+        
+        @media (max-width: 600px) {
+            .buttons-container {
+                gap: 20px;
+            }
+            
+            .btn {
+                width: 160px;
+                height: 160px;
+                font-size: 1.6rem;
+            }
+            
+            .btn i {
+                font-size: 3rem;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Kirim va Chiqim Narxlari</h1>
+        
+        <div class="buttons-container">
+            <!-- <button class="btn btn-income" id="incomeBtn">
+                <i class="fa-solid fa-arrow-up"></i>
+                Kirim
+            </button> -->
+
+            <a href="{% url 'xaridor_kirim' %}" class="btn btn-income" id="incomeBtn">
+                <i class="fa-solid fa-arrow-up"></i>
+                Kirim
+            </a>
+            
+            <a class="btn btn-expense" id="expenseBtn" href="{% url 'umumiy_chiqim' %}">
+                <i class="fa-solid fa-arrow-down"></i>
+                Chiqim
+            </a>
+
+
+        </div>
+
+        <div class="alohida" style="display: flex; justify-content: center;">
+            <a class="btn btn-zakaz" id="expenseBtn" href="{% url 'check_home' %}">
+                <i class="fa-solid fa-shopping-cart"></i>
+                Zakazlar
+            </a>
+        </div>
+        
+        <div class="info-container">
+            <div class="info-box">
+                <div class="row">
+                    <div class="col-lg-6">
+                        <div class="info-header">
+                            N
+                            <span style="color: #00b09b; font-weight: 700;">0</span>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-6">
+                        <div class="info-header">
+                            P
+                            <span style="color: #00b09b; font-weight: 700;">0</span>
+                        </div>
+                    </div>
+                </div>
+                <!-- <div class="price-item">
+                    <div class="price-label">Naqd Narx (USD)</div>
+                    <div class="price-value income-value">12,450 <span class="highlight">SO'M</span></div>
+                </div>
+                
+                <div class="price-item">
+                    <div class="price-label">Naqd Narx (EUR)</div>
+                    <div class="price-value income-value">13,200 <span class="highlight">SO'M</span></div>
+                </div>
+                
+                <div class="price-item">
+                    <div class="price-label">Hisob-Kitob Narxi (USD)</div>
+                    <div class="price-value income-value">12,400 <span class="highlight">SO'M</span></div>
+                </div>
+                
+                <div class="price-item">
+                    <div class="price-label">Hisob-Kitob Narxi (EUR)</div>
+                    <div class="price-value income-value">13,150 <span class="highlight">SO'M</span></div>
+                </div> -->
+            </div>
+            
+            <div class="info-box">
+                <!-- <div class="info-header">
+                    <i class="fas fa-coins"></i>
+                    Chiqim Narxlari
+                </div> -->
+                
+                <div class="row">
+                    <div class="col-lg-6">
+                        <div class="info-header">
+                            N
+                            <span style="color: #ff4b2b; font-weight: 700;">0</span>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-6">
+                        <div class="info-header">
+                            P
+                            <span style="color: #ff4b2b; font-weight: 700;">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- <div class="price-item">
+                    <div class="price-label">Naqd Narx (USD)</div>
+                    <div class="price-value expense-value">12,550 <span class="highlight">SO'M</span></div>
+                </div>
+                
+                <div class="price-item">
+                    <div class="price-label">Naqd Narx (EUR)</div>
+                    <div class="price-value expense-value">13,300 <span class="highlight">SO'M</span></div>
+                </div>
+                
+                <div class="price-item">
+                    <div class="price-label">Hisob-Kitob Narxi (USD)</div>
+                    <div class="price-value expense-value">12,500 <span class="highlight">SO'M</span></div>
+                </div>
+                
+                <div class="price-item">
+                    <div class="price-label">Hisob-Kitob Narxi (EUR)</div>
+                    <div class="price-value expense-value">13,250 <span class="highlight">SO'M</span></div>
+                </div> -->
+            </div>
+        </div>
+        
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const incomeBtn = document.getElementById('incomeBtn');
+            const expenseBtn = document.getElementById('expenseBtn');
+            
+            // Tugmalarga bosilganda animatsiya
+            incomeBtn.addEventListener('click', function() {
+                this.classList.add('active');
+                setTimeout(() => {
+                    this.classList.remove('active');
+                }, 300);
+            });
+            
+            expenseBtn.addEventListener('click', function() {
+                this.classList.add('active');
+                setTimeout(() => {
+                    this.classList.remove('active');
+                }, 300);
+            });
+        });
+    </script>
+</body>
+</html>

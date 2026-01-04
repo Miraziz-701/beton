@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <title>Asosiy Ma’lumot O'zgartirish</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    body {
+      background-color: #f0f2f5;
+      padding: 40px;
+    }
+    .form-box {
+      max-width: 750px;
+      margin: auto;
+      background: #fff;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+    }
+    .form-title {
+      color: #198754;
+      font-weight: 600;
+      margin-bottom: 25px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="form-box">
+    <h4 class="form-title"><i class="fas fa-database me-2"></i>Asosiy Ma’lumot Qo‘shish</h4>
+
+    <form method="post" action="{% url 'change_product' instance.id %}">
+      {% csrf_token %}
+      <div class="row mb-3">
+        <div class="col-md-6">
+          <label class="form-label">Mijoz</label>
+          {{ form.mijoz }}
+          <div class="mt-2">
+            <a href="{% url 'add_all' 1 %}?next={{ request.path }}" class="btn btn-outline-primary btn-sm">
+              ➕ Yangi mijoz qo‘shish
+            </a>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Kim tomonidan jo'natilgani</label>
+          {{ form.kim_tomonidan_jonatilgani }}
+          <div class="mt-2">
+            <a href="{% url 'add_all' 4 %}?next={{ request.path }}" class="btn btn-outline-primary btn-sm">
+              ➕ Yangi jo'natuvchi qo‘shish
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div class="row mb-3">
+        <div class="col-md-6">
+          <label class="form-label">Obyekt</label>
+          {{ form.obyekt_nomi }}
+          <div class="mt-2">
+            <a href="{% url 'add_all' 3 %}?next={{ request.path }}" class="btn btn-outline-primary btn-sm">
+              ➕ Yangi obyekt qo‘shish
+            </a>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Markasi</label>
+          {{ form.maxsulot_markasi }}
+          <div class="mt-2">
+            <a href="{% url 'add_all' 6 %}?next={{ request.path }}" class="btn btn-outline-primary btn-sm">
+              ➕ Yangi beton marka qo‘shish
+            </a>
+          </div>
+        </div>
+      </div>
+      
+      <div class="row mb-3">
+        <div class="col-md-6">
+          <label class="form-label">Qog‘ozdagi mahsulot soni</label>
+          {{ form.qogozdagi_maxsulot_soni }}
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Real mahsulot soni</label>
+          {{ form.maxsulot_soni }}
+        </div>
+      </div>
+
+      <div class="row mb-3">
+        <div class="col-12">
+          <label class="form-label">Kamera</label>
+          {{ form.kamera }} 
+          <div class="mt-2">
+            <a href="{% url 'add_all' 5 %}?next={{ request.path }}" class="btn btn-outline-primary btn-sm">
+              ➕ Yangi kamera qo‘shish
+            </a>
+          </div>
+          <div id="cameraBox" style="display: none; border: 1px solid #ccc; padding: 10px; margin-top: 10px;">
+            <img id="cameraFeed" width="640" height="480" style="max-width: 100%;" />
+          </div>
+        </div>
+      </div>
+
+      <div class="mb-4">
+          <label class="form-label">Mashina raqami</label>
+          {{ form.mashina }}
+      </div>
+
+
+
+      <div class="d-flex justify-content-between">
+        <a href="{% url 'home' %}" class="btn btn-outline-secondary">← Orqaga</a>
+        <button type="submit" class="btn btn-success px-4">
+          <i class="fas fa-check me-1"></i> Saqlash
+        </button>
+      </div>
+    </form>
+  </div>
+
+</body>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const kameraSelect = document.getElementById("id_kamera");
+    const cameraBox = document.getElementById("cameraBox");
+    const videoFeed = document.getElementById("cameraFeed");
+
+    kameraSelect.addEventListener("change", async function () {
+        const kameraId = this.value;
+
+        if (!kameraId) {
+            cameraBox.style.display = "none";
+            videoFeed.src = "";
+            return;
+        }
+
+        cameraBox.style.display = "block";
+        videoFeed.src = `/video_feed/${kameraId}/`;
+    });
+  });
+
+  document.getElementById("mashinaInput").addEventListener("input", function (e) {
+    let raw = e.target.value.toUpperCase().replace(/\s/g, ''); // remove spaces
+    let formatted = '';
+    
+    if (raw.length <= 2) {
+        formatted = raw.replace(/[^0-9]/g, ''); // faqat raqam
+    } else {
+        const firstTwo = raw.slice(0, 2).replace(/[^0-9]/g, '');
+
+        const third = raw[2];
+
+        if (/[A-Z]/.test(third)) {
+            // 👉 SHAXSIY: 01 A 123 AB
+            const A = third;
+            const digits = raw.slice(3, 6).replace(/[^0-9]/g, '');
+            const B = raw.slice(6, 8).replace(/[^A-Z]/g, '');
+            formatted = `${firstTwo} ${A}${digits ? ' ' + digits : ''}${B ? ' ' + B : ''}`;
+        } else if (/[0-9]/.test(third)) {
+            // 👉 YURIDIK: 01 123 ABC
+            const digits = raw.slice(2, 5).replace(/[^0-9]/g, '');
+            const letters = raw.slice(5, 8).replace(/[^A-Z]/g, '');
+            formatted = `${firstTwo} ${digits}${letters ? ' ' + letters : ''}`;
+        } else {
+            formatted = firstTwo;
+        }
+    }
+
+    e.target.value = formatted.trim();
+  });
+
+  document.addEventListener("DOMContentLoaded", function () {
+    const kameraSelect = document.getElementById("id_kamera");
+    const cameraBox = document.getElementById("cameraBox");
+    const videoFeed = document.getElementById("cameraFeed");
+
+    async function updateCameraBox(kameraId) {
+      if (!kameraId) {
+        cameraBox.style.display = "none";
+        videoFeed.src = "";
+        return;
+      }
+
+      const response = await fetch(`/get-kamera-ip/${kameraId}/`);
+      const data = await response.json();
+
+      if (data.ip) {
+        cameraBox.style.display = "block";
+        videoFeed.src = `/video_feed/${kameraId}/`;
+      } else {
+        cameraBox.style.display = "none";
+        videoFeed.src = "";
+      }
+    }
+
+    // 🔁 Sahifa yuklanganda hozirgi qiymatni tekshiramiz
+    if (kameraSelect.value) {
+      updateCameraBox(kameraSelect.value);
+    }
+
+    // 🎯 Keyin foydalanuvchi o‘zgartirsa — qaytadan ishlaydi
+    kameraSelect.addEventListener("change", function () {
+      updateCameraBox(this.value);
+    });
+  });
+</script>
+</html>

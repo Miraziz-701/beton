@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <title>Kelmagan ishchi qo‘shish</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+<div class="container py-5">
+  <div class="card shadow-lg rounded-3">
+    <div class="card-header bg-danger text-white">
+      <h4 class="mb-0">❌ Kelmagan ishchi qo‘shish</h4>
+    </div>
+    <div class="card-body">
+      <form method="post" action="{% url 'add_kelmagan_ishchi' %}">
+        {% csrf_token %}
+
+        <div id="form-container">
+          <!-- FORM BLOK -->
+          <div class="form-block border rounded p-3 mb-3 position-relative">
+            <!-- ❌ O‘chirish tugmasi -->
+            <button type="button" class="btn-close remove-block position-absolute top-0 end-0 m-2" aria-label="Close" style="color: red;"></button>
+
+            <!-- Ishchi -->
+            <div class="mb-3">
+              <label class="form-label">Ishchi</label>
+              {{ form.ishchi }}
+            </div>
+            
+            <!-- Izoh -->
+            <div class="mb-3">
+              <div class="form-check mb-2">
+                <input type="checkbox" class="form-check-input izoh-toggle">
+                <label class="form-check-label">Izoh kiritish</label>
+              </div>
+              <div class="izoh-field d-none">
+                <label class="form-label">Izoh (ixtiyoriy)</label>
+                {{ form.izoh }}
+              </div>
+            </div>
+
+            <!-- Sana -->
+            <div class="mb-3">
+              <button type="button" class="btn btn-outline-primary btn-sm sana-toggle">
+                Sanani o‘zgartirish
+              </button>
+              <div class="sana-field d-none mt-2">
+                <label class="form-label">Sana</label>
+                {{ form.sana }}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Yana qo‘shish tugmasi -->
+        <div class="mb-3">
+          <button type="button" id="addMore" class="btn btn-success">➕ Yana qo‘shish</button>
+        </div>
+
+        <!-- Tugmalar -->
+        <div class="d-flex justify-content-end gap-2">
+          <a href="{% url 'ishchilar_davomati' %}" class="btn btn-outline-secondary">Ortga</a>
+          <button type="submit" class="btn btn-danger">💾 Saqlash</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+    function initBlockEvents(block) {
+        // Izoh checkbox
+        const izohToggle = block.querySelector(".izoh-toggle");
+        const izohField = block.querySelector(".izoh-field");
+        if (izohToggle) {
+            izohToggle.addEventListener("change", function() {
+                izohField.classList.toggle("d-none", !this.checked);
+            });
+        }
+
+        // Sana tugma
+        const sanaToggle = block.querySelector(".sana-toggle");
+        const sanaField = block.querySelector(".sana-field");
+        if (sanaToggle) {
+            sanaToggle.addEventListener("click", function() {
+                sanaField.classList.toggle("d-none");
+                if (!sanaField.classList.contains("d-none")) {
+                    sanaField.querySelector("input").value = new Date().toISOString().split("T")[0];
+                }
+            });
+        }
+
+        // ❌ Remove tugmasi
+        const removeBtn = block.querySelector(".remove-block");
+        if (removeBtn) {
+            removeBtn.addEventListener("click", function() {
+                const container = document.getElementById("form-container");
+                const blocks = container.querySelectorAll(".form-block");
+                if (blocks.length > 1) {
+                    block.remove();  // faqat bittadan ko‘p bo‘lsa o‘chadi
+                } else {
+                    alert("Oxirgi blokni o‘chirib bo‘lmaydi!");
+                }
+            });
+        }
+    }
+
+    // Dastlabki blokni ishga tushirish
+    document.querySelectorAll(".form-block").forEach(initBlockEvents);
+
+    // ➕ Yana qo‘shish tugmasi
+    document.getElementById("addMore").addEventListener("click", function() {
+        const container = document.getElementById("form-container");
+        const firstBlock = container.querySelector(".form-block");
+        const newBlock = firstBlock.cloneNode(true);
+
+        // Inputlarni tozalash
+        newBlock.querySelectorAll("input, textarea, select").forEach(el => {
+            if (el.type === "checkbox") el.checked = false;
+            else el.value = "";
+        });
+
+        // Maydonlarni yashirish
+        newBlock.querySelector(".izoh-field").classList.add("d-none");
+        newBlock.querySelector(".sana-field").classList.add("d-none");
+
+        container.appendChild(newBlock);
+        initBlockEvents(newBlock);
+    });
+</script>
+
+</body>
+</html>

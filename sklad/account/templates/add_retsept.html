@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <title>Retsept qo‘shish</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+<div class="container py-4">
+  <h2 class="mb-4">🧱 Retsept qo‘shish</h2>
+
+    <form method="post" action="{% url 'add_retsept' %}">
+        {% csrf_token %}
+        {{ formset.management_form }}
+        
+        <div id="formset-container">
+            {% for form in formset %}
+                <div class="row g-2 mb-2 formset-form align-items-center">
+                    <div class="col-md-4">{{ form.retsept_nomi }}</div>
+                    <div class="col-md-4">{{ form.maxsulot }}</div>
+                    <div class="col-md-3">{{ form.miqdor }}</div>
+                    <div class="col-md-1 text-center">
+                        {{ form.DELETE.as_hidden }} <!-- checkbox yashirin -->
+                        <button type="button" class="btn btn-sm btn-outline-danger delete-row">❌</button>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <button type="button" id="add-form" class="btn btn-primary mt-3">➕ Yangi qator qo‘shish</button>
+        <button type="submit" class="btn btn-success mt-3">💾 Saqlash</button>
+    </form>
+</div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    let formsetContainer = document.getElementById("formset-container");
+    let totalForms = document.getElementById("id_form-TOTAL_FORMS");
+    let addBtn = document.getElementById("add-form");
+
+    // ❌ bosilganda DELETE ni belgilash
+    document.addEventListener("click", function(e){
+        if(e.target.classList.contains("delete-row")){
+            let row = e.target.closest(".formset-form");
+            let delInput = row.querySelector("input[name$='-DELETE']");
+            if(delInput){
+                delInput.checked = true;
+            }
+            row.style.display = "none";
+        }
+    });
+
+    // ➕ qo‘shish
+    addBtn.addEventListener("click", function() {
+        let formIndex = parseInt(totalForms.value);
+
+        let emptyFormHtml = `
+        <div class="row g-2 mb-2 formset-form align-items-center">
+            <div class="col-md-4 retsept-field">__retsept__</div>
+            <div class="col-md-4">__maxsulot__</div>
+            <div class="col-md-3">__miqdor__</div>
+            <div class="col-md-1 text-center">
+                __delete__ <button type="button" class="btn btn-sm btn-outline-danger delete-row">❌</button>
+            </div>
+        </div>
+        `;
+
+        let newFormHtml = emptyFormHtml
+            .replace("__retsept__", `{{ formset.empty_form.retsept_nomi|escapejs }}`.replace(/__prefix__/g, formIndex))
+            .replace("__maxsulot__", `{{ formset.empty_form.maxsulot|escapejs }}`.replace(/__prefix__/g, formIndex))
+            .replace("__miqdor__", `{{ formset.empty_form.miqdor|escapejs }}`.replace(/__prefix__/g, formIndex))
+            .replace("__delete__", `{{ formset.empty_form.DELETE.as_hidden|escapejs }}`.replace(/__prefix__/g, formIndex));
+
+        let wrapper = document.createElement("div");
+        wrapper.innerHTML = newFormHtml;
+
+        // faqat birinchi qatorda retsept ko‘rinadi
+        if (formIndex > 0) {
+            let retseptDiv = wrapper.querySelector(".retsept-field");
+            if (retseptDiv) retseptDiv.classList.add("d-none");
+        }
+
+        formsetContainer.appendChild(wrapper.firstElementChild);
+
+        // MUHIM: endi umumiy formalar sonini +1 qilamiz
+        totalForms.value = parseInt(totalForms.value) + 1;
+    });
+
+  });
+
+</script>
+
+
+</body>
+</html>

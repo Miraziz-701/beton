@@ -1,0 +1,95 @@
+{% load custom_filters %}
+
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <title>📊 Beton Chiqimlari Hisoboti</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background: #f8f9fa; }
+    .card { border-radius: 12px; box-shadow: 0 4px 8px rgba(0,0,0,0.05); }
+    h2 { font-weight: bold; color: #343a40; }
+    .filter-label { font-weight: 500; }
+  </style>
+</head>
+<body>
+<div class="container py-4">
+
+  <!-- Sarlavha -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="m-0">Haydovchilar Chiqimlari Hisoboti</h2>
+    <!-- <div class="d-flex gap-2">
+      <button class="btn btn-sm btn-outline-success">⬇️ Excel</button>
+      <button class="btn btn-sm btn-outline-danger">⬇️ PDF</button>
+    </div> -->
+  </div>
+
+  <!-- Filter qismi -->
+  <!-- <div class="card mb-4 p-3">
+    <form class="row g-3 align-items-end">
+      <div class="col-md-3">
+        <label class="form-label filter-label">Mijoz</label>
+        <select class="form-select">
+          <option value="">Barchasi</option>
+          <option>Aliyev Qurilish</option>
+          <option>Bektemir Beton</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label filter-label">Mashina raqami</label>
+        <input type="text" class="form-control" placeholder="01 A 234 BC">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label filter-label">Boshlanish</label>
+        <input type="date" class="form-control">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label filter-label">Tugash</label>
+        <input type="date" class="form-control">
+      </div>
+      <div class="col-md-2">
+        <button class="btn btn-primary w-100">🔍 Qidirish</button>
+      </div>
+    </form>
+  </div> -->
+
+  <!-- Jadval qismi -->
+  <div class="card p-3">
+    <table class="table table-hover align-middle">
+      <thead class="table-dark">
+        <tr>
+          <th class="text-center">Mijoz</th>
+          <th class="text-center">Mashina raqami</th>
+          <th class="text-center">Obyekt nomi</th>
+          <th class="text-center">Narx (so‘m)</th>
+          <th class="text-center">To‘lov turi</th>
+          <th class="text-center">Sana</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for chiqim in chiqimlar %}
+          <tr>
+            <td class="text-center">{{ chiqim.mijoz }}</td>
+            <td class="text-center">{{ chiqim.mashina_raqami }}</td>
+            <td class="text-center">{{ chiqim.obyekt_nomi }}</td>
+            <td class="text-center">{{ chiqim.berilgan_narx|space_separate }}</td>
+            <td class="text-center">
+              {% if chiqim.tolov_turi == "N" %}
+                <span class="badge bg-success">{{ chiqim.tolov_turi }}</span>
+              {% elif chiqim.tolov_turi == "P" %}
+                <span class="badge bg-primary">{{ chiqim.tolov_turi }}</span>
+              {% else %}
+                -
+              {% endif %}
+            <td class="text-center">{{ chiqim.vaqt|date:"d-m-Y H:i" }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+</div>
+</body>
+</html>
+    

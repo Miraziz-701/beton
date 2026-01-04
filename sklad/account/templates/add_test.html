@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <title>Asosiy Ma’lumot Qo‘shish</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    body {
+      background-color: #f0f2f5;
+      padding: 40px;
+    }
+    .form-box {
+      max-width: 750px;
+      margin: auto;
+      background: #fff;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+    }
+    .form-title {
+      color: #198754;
+      font-weight: 600;
+      margin-bottom: 25px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="form-box">
+    <h4 class="form-title"><i class="fas fa-database me-2"></i>Asosiy Ma’lumot Qo‘shish</h4>
+
+    <form method="post" action="{% url 'add_test_product' %}" id="addProductForm">
+      {% csrf_token %}
+      <div class="row mb-3">
+        <div class="col-md-6 mb-3" id="jonatuvchiCol">
+            <label class="form-label">Kim tomonidan jo'natilgani</label>
+            {{ form.kim_tomonidan_jonatilgani }}
+            <!-- <select class="form-select">
+                <option selected>Ali Trans</option>
+                <option>Bek Logistic</option>
+                <option>Samarqand Beton</option>
+            </select> -->
+        </div>
+
+        <!-- Turi -->
+        <div class="col-md-6 mb-3" id="turiCol">
+            <label class="form-label d-block">To'lov Turi</label>
+            <div class="btn-group" role="group">
+                <input type="radio" class="btn-check" name="turi" id="turiN" value="N" checked>
+                <label class="btn btn-outline-success" for="turiN">N</label>
+
+                <input type="radio" class="btn-check" name="turi" id="turiP" value="P">
+                <label class="btn btn-outline-primary" for="turiP">P</label>
+            </div>
+
+        </div>
+        
+
+
+
+        <div class="col-md-6 mb-3" id="tashkilotBox" style="display:none;">
+            <label class="form-label">Tashkilot nomi</label>
+            {{ form.tashkilot_nomi }}
+            <datalist id="tashkilot_list"></datalist>
+            <!-- <input type="text" class="form-control" placeholder="Masalan: YTM-3"> -->
+        </div>
+      </div>
+      
+      <div class="row mb-3">
+        <div class="col-md-6">
+            <label class="form-label">Obyekt</label>
+            {{ form.obyekt_id }}
+            <datalist id="obyekt_list"></datalist>
+            <!-- <input type="text" class="form-control" placeholder="Masalan: YTM-3"> -->
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label">Markasi</label>
+            {{ form.maxsulot_markasi }}
+            <!-- <select class="form-select">
+                <option selected>Ali Trans</option>
+                <option>Bek Logistic</option>
+                <option>Samarqand Beton</option>
+            </select> -->
+        </div>
+
+      </div>
+      
+      <div class="row mb-3">
+        <div class="col-md-6">
+            <label class="form-label">Qog‘ozdagi mahsulot soni</label>
+            {{ form.qogozdagi_maxsulot_soni }}
+            <!-- <input type="text" class="form-control" placeholder="Masalan: YTM-3"> -->
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label">Real mahsulot soni</label>
+            {{ form.maxsulot_soni }}
+            <!-- <input type="text" class="form-control" placeholder="Masalan: YTM-3"> -->
+        </div>
+      </div>
+      <div class="row mb-3">
+        <div class="col-12">
+            <label class="form-label">Zavod</label>
+            {{ form.kamera }}
+            <!-- <select class="form-select">
+                <option selected>Ali Trans</option>
+                <option>Bek Logistic</option>
+                <option>Samarqand Beton</option>
+            </select> -->
+        </div>
+      </div>
+      
+      <div class="row mb-3">
+        <div class="col-12">
+            <label class="form-label">Mashina</label>
+            {{ form.mashina }}
+            <!-- <input type="text" class="form-control" placeholder="Masalan: YTM-3"> -->
+          
+        </div>
+      </div>
+    
+
+
+
+      <div class="d-flex justify-content-between">
+        <a href="{% url 'home' %}" class="btn btn-outline-secondary">← Orqaga</a>
+        <button id="submitBtn" type="submit" class="btn btn-success px-4">
+          <i class="fas fa-check me-1"></i> Saqlash
+        </button>
+      </div>
+    </form>
+  </div>
+
+</body>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+
+        const agentSelect = document.getElementById('id_kim_tomonidan_jonatilgani');
+        const tashkilotInput = document.getElementById('id_tashkilot_nomi');
+
+        const obyektInput = document.getElementById('id_obyekt_id');
+        const obyektList = document.getElementById('obyekt_list');
+
+        function loadObyektlar() {
+            const agentId = agentSelect.value;
+            const tashkilotName = tashkilotInput ? tashkilotInput.value : '';
+
+            if (!agentId) {
+                obyektList.innerHTML = '';
+                obyektInput.value = '';
+                return;
+            }
+
+            let url = `/ajax/obyekt-by-agent/?agent_id=${agentId}`;
+
+            // Agar tashkilot nomi bor bo‘lsa → PRI
+            if (tashkilotName) {
+                url += `&tashkilot_name=${encodeURIComponent(tashkilotName)}`;
+            }
+
+            fetch(url)
+                .then(r => r.json())
+                .then(data => {
+                    obyektList.innerHTML = '';
+                    data.forEach(name => {
+                        const option = document.createElement('option');
+                        option.value = name;
+                        obyektList.appendChild(option);
+                    });
+                });
+        }
+
+        // 🔹 Agent o‘zgarsa
+        agentSelect.addEventListener('change', loadObyektlar);
+
+        // 🔹 Tashkilot tanlansa (faqat P holatda)
+        if (tashkilotInput) {
+            tashkilotInput.addEventListener('change', loadObyektlar);
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', function () {
+
+        const agentSelect = document.getElementById('id_kim_tomonidan_jonatilgani');
+
+        const turiN = document.getElementById("turiN");
+        const turiP = document.getElementById("turiP");
+
+        const jonatuvchiCol = document.getElementById("jonatuvchiCol");
+        const turiCol = document.getElementById("turiCol");
+        const tashkilotBox = document.getElementById("tashkilotBox");
+
+        const datalist = document.getElementById('tashkilot_list');
+        const tashkilotInput = document.getElementById('id_tashkilot_nomi');
+
+        function toggleUI() {
+            jonatuvchiCol.classList.remove("col-md-6", "col-md-4");
+            turiCol.classList.remove("col-md-6", "col-md-2");
+
+            if (turiP.checked) {
+                jonatuvchiCol.classList.add("col-md-4");
+                turiCol.classList.add("col-md-2");
+                tashkilotBox.style.display = "block";
+
+                loadTashkilotlar();
+
+            } else {
+                jonatuvchiCol.classList.add("col-md-6");
+                turiCol.classList.add("col-md-6");
+                tashkilotBox.style.display = "none";
+                tashkilotInput.value = "";
+                datalist.innerHTML = "";
+            }
+        }
+
+        function loadTashkilotlar() {
+            const agentId = agentSelect.value;
+
+            if (!agentId || !turiP.checked) {
+                datalist.innerHTML = "";
+                return;
+            }
+
+            fetch(`/ajax/tashkilot-by-agent/?agent_id=${agentId}`)
+                .then(r => r.json())
+                .then(data => {
+                    datalist.innerHTML = "";
+                    data.forEach(name => {
+                        const option = document.createElement("option");
+                        option.value = name;
+                        datalist.appendChild(option);
+                    });
+                });
+        }
+
+        // ===== EVENTLAR =====
+        turiN.addEventListener("change", toggleUI);
+        turiP.addEventListener("change", toggleUI);
+
+        agentSelect.addEventListener("change", loadTashkilotlar);
+
+        // ===== SAHIFA OCHILGANDA =====
+        toggleUI();
+    });
+
+  function getCookie(name){
+      const v = `; ${document.cookie}`.split(`; ${name}=`);
+      if (v.length === 2) return v.pop().split(";").shift();
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+
+      let isSubmitting = false;
+
+      const form = document.getElementById("addProductForm");
+      const btn  = document.getElementById("submitBtn");
+
+      form.addEventListener("submit", function(e){
+
+          // ✅ Double submit blok
+          if (isSubmitting){
+              e.preventDefault();
+              return;
+          }
+          isSubmitting = true;
+          btn.disabled = true;
+          btn.innerText = "⏳ Saqlanmoqda...";
+
+          // ✅ Default submitni to‘xtatamiz
+          e.preventDefault();
+
+          let fd = new FormData(form);
+
+          fetch(form.action, {
+              method: "POST",
+              body: fd,
+              headers: {
+                  "X-Requested-With": "XMLHttpRequest",
+                  "X-CSRFToken": getCookie("csrftoken"),
+              }
+          })
+          .then(r => r.json())
+          .then(d => {
+
+              if (d.status === "ok") {
+                  let url = d.redirect_url || "/home/";
+                  window.location.href = url;
+              } 
+              else {
+                  alert(d.message || "Xatolik!");
+                  isSubmitting = false;
+                  btn.disabled = false;
+                  btn.innerText = "✅ Saqlash";
+              }
+          })
+          .catch(err => {
+              console.error(err);
+              isSubmitting = false;
+              btn.disabled = false;
+              btn.innerText = "✅ Saqlash";
+          });
+      });
+  });
+
+
+  const umumiySelect = document.getElementById('id_umumiy_maxsulot');
+  const izohWrapper = document.getElementById('izoh-wrapper');
+  const izohCheck = document.getElementById('id_izoh_qoshish');
+  const izohMatniBox = document.getElementById('izoh-matni-box');
+
+  function toggleIzoh() {
+    const val = umumiySelect.value || '';
+    if (val.startsWith('xomashyo_')) {
+      izohWrapper.style.display = '';
+    } else {
+      izohWrapper.style.display = 'none';
+      izohCheck.checked = false;
+      izohMatniBox.style.display = 'none';
+      document.getElementById('id_izoh_matni').value = '';
+    }
+  }
+
+  function toggleIzohMatni() {
+    if (izohCheck.checked) {
+      izohMatniBox.style.display = '';
+    } else {
+      izohMatniBox.style.display = 'none';
+      document.getElementById('id_izoh_matni').value = '';
+    }
+  }
+
+  umumiySelect.addEventListener('change', toggleIzoh);
+  izohCheck.addEventListener('change', toggleIzohMatni);
+  window.addEventListener('DOMContentLoaded', () => {
+    toggleIzoh();
+    toggleIzohMatni();
+  });
+
+  document.addEventListener("DOMContentLoaded", function () {
+    const kameraSelect = document.getElementById("id_kamera");
+    const cameraBox = document.getElementById("cameraBox");
+    const videoFeed = document.getElementById("cameraFeed");
+
+    kameraSelect.addEventListener("change", async function () {
+        const kameraId = this.value;
+
+        if (!kameraId) {
+            cameraBox.style.display = "none";
+            videoFeed.src = "";
+            return;
+        }
+
+        cameraBox.style.display = "block";
+        videoFeed.src = `/video_feed/${kameraId}/`;
+    });
+  });
+
+  document.getElementById("mashinaInput").addEventListener("input", function (e) {
+    let raw = e.target.value.toUpperCase().replace(/\s/g, ''); // remove spaces
+    let formatted = '';
+
+    if (raw.length <= 2) {
+        formatted = raw.replace(/[^0-9]/g, ''); // faqat raqam
+    } else {
+        const firstTwo = raw.slice(0, 2).replace(/[^0-9]/g, '');
+
+        const third = raw[2];
+
+        if (/[A-Z]/.test(third)) {
+            // 👉 SHAXSIY: 01 A 123 AB
+            const A = third;
+            const digits = raw.slice(3, 6).replace(/[^0-9]/g, '');
+            const B = raw.slice(6, 8).replace(/[^A-Z]/g, '');
+            formatted = `${firstTwo} ${A}${digits ? ' ' + digits : ''}${B ? ' ' + B : ''}`;
+        } else if (/[0-9]/.test(third)) {
+            // 👉 YURIDIK: 01 123 ABC
+            const digits = raw.slice(2, 5).replace(/[^0-9]/g, '');
+            const letters = raw.slice(5, 8).replace(/[^A-Z]/g, '');
+            formatted = `${firstTwo} ${digits}${letters ? ' ' + letters : ''}`;
+        } else {
+            formatted = firstTwo;
+        }
+    }
+
+    e.target.value = formatted.trim();
+
+    // 🔎 Autocomplete AJAX qismi
+    fetch(`/suggest-mashina/?q=${formatted}`)
+        .then(res => res.json())
+        .then(data => {
+            const datalist = document.getElementById('mashinaSuggestions');
+            datalist.innerHTML = '';
+            data.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item;
+                datalist.appendChild(option);
+            });
+        });
+  });
+
+  function setupAutocomplete(inputId, datalistId, modelName, fieldName) {
+    document.getElementById(inputId).addEventListener("input", function (e) {
+        let raw = e.target.value.trim();
+        fetch(`/suggest/${modelName}/${fieldName}/?q=${raw}`)
+            .then(res => res.json())
+            .then(data => {
+                const datalist = document.getElementById(datalistId);
+                datalist.innerHTML = '';
+                data.forEach(item => {
+                    const option = document.createElement('option');
+                    option.value = item;
+                    datalist.appendChild(option);
+                });
+            });
+    });
+}
+
+// Mijoz
+setupAutocomplete("mijozInput", "mijozSuggestions", "Mijoz", "ism_familya");
+// Obyekt
+setupAutocomplete("obyektInput", "obyektSuggestions", "Obyekt", "obyekt_nomi");
+// Jo‘natuvchi
+setupAutocomplete("jonatuvchiInput", "jonatuvchiSuggestions", "Jonatuvchi", "ism_familya");
+  
+</script>
+</html>

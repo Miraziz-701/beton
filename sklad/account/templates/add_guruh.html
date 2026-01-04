@@ -1,0 +1,198 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="uz">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>Guruh — Mashinalar</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .plate-pill {
+      border: 1px solid #e0e0e0;
+      padding: .4rem .75rem;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      gap: .5rem;
+      background: #f8f9fa;
+    }
+
+    .plate-pill .remove {
+      border: none;
+      background: transparent;
+      line-height: 1;
+      font-weight: 700;
+    }
+
+    .plate-list {
+      gap: .5rem;
+    }
+
+    .muted {
+      color: #6c757d;
+    }
+  </style>
+</head>
+
+<body class="bg-light">
+
+  <div class="container py-4">
+
+    <!-- Header: Xojayini nomi + Orqaga -->
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <h4 class="mb-0">
+        Xojayini: <span class="text-primary">{{ xojayini }}</span>
+      </h4>
+      <a href="{% url 'home' %}" class="btn btn-outline-secondary">← Orqaga</a>
+    </div>
+
+    <!-- Kiritish paneli -->
+    <div class="card shadow-sm">
+      <div class="card-body">
+
+        <!-- Kiritish qatori: mashina raqami input + Qo'shish tugmasi -->
+        <div class="row g-2 align-items-center">
+          <div class="col-sm-8 col-md-6">
+            <input id="plateInput" type="text" class="form-control" placeholder="Masalan: 01 A 001 AA"
+              list="mashinaSuggestions" autocomplete="off">
+            <!-- ixtiyoriy: mavjud mashinalar datalist -->
+            <datalist id="mashinaSuggestions">
+              {% for m in mashinalar %}
+              <option value="{{ m.mashina_raqami }}"></option>
+              {% endfor %}
+            </datalist>
+          </div>
+          <div class="col-sm-4 col-md-3">
+            <button id="addBtn" type="button" class="btn btn-success w-100">
+              ➕ Qo‘shish
+            </button>
+          </div>
+        </div>
+
+        <!-- Qo'shilgan mashinalar ro'yxati (pill) -->
+        <div class="mt-3">
+          <div class="plate-list d-flex flex-wrap" id="plateList"></div>
+          <div id="emptyHint" class="mt-2 muted">Hozircha mashina qo‘shilmagan.</div>
+        </div>
+
+        <!-- Yuborish formasi -->
+        <form id="saveForm" method="post" action="{% url 'guruh_saqlash' %}" class="mt-4">
+          {% csrf_token %}
+          <!-- Xojayini qiymatini yashirin jo'natamiz (CharField ekansiz) -->
+          <input type="hidden" name="xojayini" value="{{ xojayini }}">
+
+          <!-- JS shu yerga <input name="mashinalar[]" value="01 A 001 AA">larni qo‘shadi -->
+
+          <div class="d-flex justify-content-end gap-2">
+            <button type="submit" class="btn btn-primary">
+              💾 Saqlash
+            </button>
+          </div>
+        </form>
+
+      </div>
+    </div>
+
+    <!-- Pastda mavjud bog'lanmalarni ham ko'rsatish (ixtiyoriy) -->
+    {% if mavjud_mashinalar %}
+    <div class="card shadow-sm mt-3">
+      <div class="card-body">
+        <h6 class="mb-2">Mavjud bog‘langan mashinalar:</h6>
+        <div class="d-flex flex-wrap gap-2">
+          {% for p in mavjud_mashinalar %}
+          <span class="plate-pill">{{ p }}</span>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+
+  <!-- JS -->
+  <script>
+    (function () {
+      const input = document.getElementById('plateInput');
+      const addBtn = document.getElementById('addBtn');
+      const list = document.getElementById('plateList');
+      const form = document.getElementById('saveForm');
+      const emptyHint = document.getElementById('emptyHint');
+
+      // oddiy normalizatsiya (bo'sh joylarni tozalab, katta harf)
+      function normPlate(str) {
+        if (!str) return '';
+        return str.replace(/\s+/g, ' ').trim().toUpperCase();
+      }
+
+      // takrorni tekshirish
+      function existsPlate(value) {
+        return !!list.querySelector('[data-plate="' + CSS.escape(value) + '"]');
+      }
+
+      function updateEmptyHint() {
+        emptyHint.style.display = list.children.length ? 'none' : 'block';
+      }
+
+      function addPlate(value) {
+        const plate = normPlate(value);
+        if (!plate) return;
+        if (existsPlate(plate)) {
+          input.value = '';
+          input.focus();
+          return;
+        }
+        // pill
+        const pill = document.createElement('span');
+        pill.className = 'plate-pill';
+        pill.dataset.plate = plate;
+        pill.innerHTML = `
+      <span>${plate}</span>
+      <button type="button" class="remove" aria-label="remove">&times;</button>
+    `;
+        list.appendChild(pill);
+
+        // hidden input (array)
+        const hidden = document.createElement('input');
+        hidden.type = 'hidden';
+        hidden.name = 'mashinalar[]';  // backendda request.POST.getlist('mashinalar[]')
+        hidden.value = plate;
+        pill.appendChild(hidden);
+
+        // remove handler
+        pill.querySelector('.remove').addEventListener('click', () => {
+          pill.remove();
+          updateEmptyHint();
+        });
+
+        input.value = '';
+        input.focus();
+        updateEmptyHint();
+      }
+
+      addBtn.addEventListener('click', () => addPlate(input.value));
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          addPlate(input.value);
+        }
+      });
+
+      // ixtiyoriy: yuborishda bo'sh bo'lsa bloklash
+      form.addEventListener('submit', (e) => {
+        if (!list.children.length) {
+          e.preventDefault();
+          input.focus();
+          alert('Hech bo‘lmaganda bitta mashina qo‘shing.');
+        }
+      });
+
+      updateEmptyHint();
+    })();
+  </script>
+
+</body>
+
+</html>

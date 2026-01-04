@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="uz">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Barcha Model Ma'lumotlari</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <style>
+        /* .header-wrapper {
+            position: relative;
+            padding: 10px 0;
+            text-align: center;
+        }
+
+        .back-btn {
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            padding: 6px 12px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            color: #333;
+            text-decoration: none;
+            background-color: #f8f8f8;
+            font-size: 14px;
+        } */
+
+        h4 {
+            margin-top: 40px;
+            margin-bottom: 20px;
+        }
+
+        .table-section {
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            margin-bottom: 40px;
+        }
+
+        .add-btn {
+            float: right;
+        }
+
+        .section-title {
+            font-size: 32px;
+            font-weight: bold;
+            text-align: left;
+            position: relative;
+            margin-bottom: 60px;
+            padding-bottom: 10px;
+            margin-top: 30px;
+            color: #198754; /* Bootstrap success rangi */
+        }
+
+        /* .section-title::after {
+            content: "";
+            width: 80px;
+            height: 4px;
+            background: #198754;
+            position: absolute;
+            left: 50%;
+            bottom: 0;
+            transform: translateX(-50%);
+            border-radius: 2px;
+        } */
+    </style>
+</head>
+
+<body class="bg-light p-4">
+
+    <div class="container">
+        <div class="row">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <a href="{% url 'home' %}" class="btn btn-outline-secondary">
+                    ← Orqaga
+                </a>
+                <h2 class="mb-0 text-center fw-bold text-success" style="font-size: 32px;">
+                    ⚙️ Sozlamalar
+                </h2>
+                <div style="width: 80px;"></div> <!-- markazlashtirish uchun bo‘sh joy -->
+            </div>
+
+            <!-- Mijozlar -->
+            <div class="col-lg-4">
+                <div class="table-section">
+                    <h4>
+                        👤 Mijozlar
+                        <a href="{% url 'add_all' 1 %}?next={{ request.GET.next }}" class="btn btn-success btn-sm add-btn">
+                            ➕ Yangi qo‘shish
+                        </a>
+                    </h4>
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>№</th>
+                                <th>Ism Familya</th>
+                                <th>Telefon raqam</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for client in clients %}
+                                <tr>
+                                    <td>{{ client.id }}</td>
+                                    <td>{{ client.ism_familya }}</td>
+                                    <td>{{ client.telefon_raqami }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            
+            <div class="col-lg-4">
+                <div class="table-section">
+                    <h4>
+                        🏢 Obyektlar
+                        <a href="{% url 'add_all' 3 %}?next={{ request.GET.next }}" class="btn btn-success btn-sm add-btn">
+                            ➕ Yangi qo‘shish
+                        </a>
+                    </h4>
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>№</th>
+                                <th>Obyekt Nomi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for place in places %}
+                                <tr>
+                                    <td>{{ place.id }}</td>
+                                    <td>{{ place.obyekt_nomi }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="table-section">
+                    <h4>
+                        🚚 Jo‘natuvchilar
+                        <a href="{% url 'add_all' 4 %}?next={{ request.GET.next }}" class="btn btn-success btn-sm add-btn">
+                            ➕ Yangi qo‘shish
+                        </a>
+                    </h4>
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>№</th>
+                                <th>Ism Familya</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for from_user in from_users %}
+                                <tr>
+                                    <td>{{ from_user.id }}</td>
+                                    <td>{{ from_user.ism_familya }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="col-lg-4">
+                <div class="table-section">
+                    <h4>
+                        🏗️ Markalar
+                        <a href="{% url 'add_all' 6 %}?next={{ request.GET.next }}" class="btn btn-success btn-sm add-btn">
+                            ➕ Yangi qo‘shish
+                        </a>
+                    </h4>
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>№</th>
+                                <th>Beton Markasi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for marka in markas %}
+                                <tr>
+                                    <td>{{ marka.id }}</td>
+                                    <td>{{ marka.markasi }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="table-section">
+                    <h4>
+                        🎥 Kameralar
+                        <a href="{% url 'add_all' 5 %}?next={{ request.GET.next }}" class="btn btn-success btn-sm add-btn">
+                            ➕ Yangi qo‘shish
+                        </a>
+                    </h4>
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>№</th>
+                                <th>Kamera nomi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for camera in cameras %}
+                                <tr>
+                                    <td>{{ camera.id }}</td>
+                                    <td>{{ camera.kamera_nomi }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <!-- Maxsulotlar -->
+
+
+            <!-- Obyektlar -->
+
+            <!-- Jo'natuvchilar -->
+
+            <!-- Kameralar -->
+        </div>
+
+    </div>
+
+</body>
+
+</html>

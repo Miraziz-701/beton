@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="uz">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Yuk xati</title>
+  <style>
+    @media print {
+      @page {
+        size: A4 portrait;
+        margin: 1cm;
+      }
+    }
+
+    body {
+      font-family: 'Times New Roman', serif;
+      margin: 0 40px;
+    }
+    .yuk-xati {
+      padding: 20px;
+      width: 100%;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    td, th {
+      border: 1px solid #000;
+      padding: 8px;
+      text-align: center;
+    }
+    .signature {
+      margin-top: 40px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .block {
+      flex: 1;
+      padding: 10px;
+      font-size: 14px;
+    }
+    .header-title {
+      text-align: center;
+      font-weight: bold;
+      font-size: 15px;
+      margin-bottom: 10px;
+    }
+    .meta {
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- <div class="container">
+    {% for i in "123" %}
+      <div class="block" style="margin-bottom: 30px;">
+        <div class="chek-header">
+          YUK ХАТИ № {{ item.id }} | Sana: {{ item.date|date:"d.m.Y H:i" }}
+        </div>
+        Kimdan: OOO "RED APPLE"
+        <br>
+        Kimga: {{ item.mijoz }}
+        <br>
+        Obyekt: {{ item.obyekt_nomi }}
+        <table class="table table-bordered">
+          <thead>
+            <tr>
+              <th>Tovar Nomi</th>
+              <th>Markasi</th>
+              <th>O'lchov birligi</th>
+              <th>Midori</th>
+            </tr>
+          </thead>
+        </table>
+        <tr>
+          <td><strong>Obyekt:</strong></td>
+          <td>{{ item.obyekt_nomi }}</td>
+        </tr>
+        <tr>
+          <td><strong>Mahsulot:</strong></td>
+          <td>{{ item.maxsulot_nomi }}</td>
+          <td><strong>Miqdori:</strong></td>
+          <td>{{ item.qogozdagi_maxsulot_soni }}</td>
+        </tr>
+        <tr>
+          <td><strong>Jo‘natuvchi:</strong></td>
+          <td>{{ item.kim_tomonidan_jonatilgani }}</td>
+          <td><strong>Kamera:</strong></td>
+          <td>{{ item.kamera }}</td>
+        </tr>
+        <tr>
+          <td>Jo‘natuvchi</td>
+          <td></td>
+          <td>Qabul qiluvchi</td>
+          <td></td>
+        </tr>
+        </table>
+      </div>
+    {% endfor %}
+  </div> -->
+  {% for i in "123" %}
+    <div class="yuk-xati">
+      <div class="header-title">ЮК ХАТИ № {{ item.id }} | {{ item.date|date:"H:i | d.m.Y" }}</div>
+
+      <div class="meta">
+        <div style="display: flex; gap: 40px;">
+          <div><strong>Кимдан:</strong> OOO "RED APPLE"<br><br></div>
+
+          <div>
+            <strong>Кимга:</strong> 
+            {% if item.tashkilot_nomi %}
+              {{ item.tashkilot_nomi.tashkilot_name }}
+            {% else %}
+              {{ item.kim_tomonidan_jonatilgani }}
+            {% endif %}
+            <br>
+            <span style="font-size: 15px; margin-left: 50px;">(ташкилот номи)</span><br><br>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: -20px;">
+          <div>
+            <strong>Объект номи:</strong> 
+            {{ item.obyekt_nomi }}
+          </div>
+          <div>
+            <strong>А/Машина:</strong> {{ item.mashina }}
+            <!-- <span style="border-bottom: 1px solid #000; min-width: 180px; display: inline-block;">&nbsp;</span> -->
+          </div>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Товар номи</th>
+            {% if item.maxsulot_markasi %}
+              <th>Маркаси</th>
+            {% else %}
+            {% endif %}
+            <th>Ўлчов бирлиги</th>
+            <th>Миқдори</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              {% if item.xomashyo %}
+                {{ item.xomashyo }}
+              {% else %}
+                Бетон
+              {% endif %}
+            </td>
+            {% if item.maxsulot_markasi %}
+              <td>
+                {{ item.maxsulot_markasi }}
+              </td>
+            {% else %}
+            {% endif %}
+            <td>
+              {% if item.maxsulot_markasi %}
+                м.куб
+              {% else %}
+                {{ item.xomashyo.birlik }}
+              {% endif %}
+            </td>
+            <td>{{ item.qogozdagi_maxsulot_soni }}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- <div class="signature">
+        <div class="block">
+          (Имзо)<br>(Ф.И.Ш.)<br><br>
+          Қабул қилди: __________________<br>
+          Қабул қилинган вақт: __________
+        </div>
+        <div class="block">
+          (Имзо)<br>(Ф.И.Ш.)<br><br>
+          Чиқиб кетди: __________________<br>
+          Объектдан чиққан вақт: ________
+        </div>
+      </div> -->
+      <div style="display: flex; justify-content: space-between; margin-top: 40px;">
+  
+  <!-- Chap ustun -->
+        <div>
+          <div style="margin-bottom: 20px;">
+            Кабул қилди <span style="border-bottom: 1px solid #000; min-width: 120px; display: inline-block;"></span><br>
+            <small style="margin-left: 100px;">(Имзо) (Ф.И.Ш.)</small>
+          </div>
+          <div>
+            Чиқиб кетди <span style="border-bottom: 1px solid #000; min-width: 120px; display: inline-block;"></span><br>
+            <small style="margin-left: 100px;">(Имзо)</small>
+          </div>
+        </div>
+
+        <!-- O‘ng ustun -->
+        <div>
+          <div style="margin-bottom: 20px;">
+            Қабул қилинган вақт <span style="border-bottom: 1px solid #000; min-width: 100px; display: inline-block;"></span>
+          </div>
+          <div>
+            Объектдан чиққан вақт <span style="border-bottom: 1px solid #000; min-width: 100px; display: inline-block;"></span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    <hr style="margin-top: -10px;">
+  {% endfor %}
+
+  <script>
+    window.onload = function () {
+      window.print();
+    };
+
+    window.onafterprint = function () {
+      window.location.href = "{% url 'home' %}";
+    };
+  </script>
+
+</body>
+
+</html>

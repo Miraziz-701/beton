@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="uz">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Pul kiritish</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: #f8f9fa;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .card {
+            border-radius: 1rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 500px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="card p-4">
+        <h4 class="mb-3 text-center">💵 Pul kiritish</h4>
+
+        <form action="{% url 'enter_summa_mijoz' zakaz.id %}" method="post">
+
+            {% csrf_token %}
+
+            <!-- To‘lov turi -->
+            <div class="mb-3">
+                <label for="tolovTuri" class="form-label">To‘lov turi</label>
+                <select class="form-select" id="tolovTuri" name="tolov_turi" required>
+                    <option selected disabled value="">Tanlang...</option>
+                    <option value="N">N</option>
+                    <option value="P">P</option>
+                </select>
+            </div>
+
+            <!-- Summa -->
+            <div class="mb-3">
+                <label for="summa" class="form-label">Summa (so‘m)</label>
+                <input type="text" class="form-control" id="summa" name="summa" placeholder="Masalan: 1000000"
+                    required>
+            </div>
+
+            <!-- Checkbox: izoh qo‘shish -->
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" id="izohCheck">
+                <label class="form-check-label" for="izohCheck">Izoh qo‘shmoqchiman</label>
+            </div>
+
+            <!-- Izoh textarea (default yashirin) -->
+            <div class="mb-3" id="izohBox" style="display: none;">
+                <label for="izoh" class="form-label">Izoh</label>
+                <textarea class="form-control" id="izoh" name="izoh" rows="3" placeholder="Izoh yozing..."></textarea>
+            </div>
+
+            <!-- Checkbox: sana o‘zgartirish -->
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" id="sanaCheck">
+                <label class="form-check-label" for="sanaCheck">Sanani o‘zgartirmoqchiman</label>
+            </div>
+
+            <!-- Sana input (default yashirin) -->
+            <div class="mb-3" id="sanaBox" style="display: none;">
+                <label for="sana" class="form-label">Sana</label>
+                <input type="date" class="form-control" id="sana" name="sana">
+            </div>
+
+            <!-- Tugmalar -->
+            <div class="d-flex justify-content-between">
+                <a href="{% url 'xaridor_kirim' %}" class="btn btn-secondary">❌ Bekor qilish</a>
+                <button type="submit" class="btn btn-primary">💾 Saqlash</button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        // Izoh uchun checkbox
+        document.getElementById("izohCheck").addEventListener("change", function () {
+            document.getElementById("izohBox").style.display = this.checked ? "block" : "none";
+        });
+
+        // Sana uchun checkbox
+        document.getElementById("sanaCheck").addEventListener("change", function () {
+            document.getElementById("sanaBox").style.display = this.checked ? "block" : "none";
+        });
+
+        const summaInput = document.getElementById("summa");
+
+        summaInput.addEventListener("input", function (e) {
+            // eski probellarni olib tashlaymiz
+            let value = this.value.replace(/\s/g, "");
+
+            // agar raqam bo‘lsa, format qilamiz
+            if (!isNaN(value) && value !== "") {
+            this.value = value.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+            } else {
+            this.value = "";
+            }
+        });
+
+    </script>
+
+</body>
+
+</html>

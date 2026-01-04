@@ -1,0 +1,238 @@
+{% load custom_filters %}
+
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hisobot Jadvali</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+
+        .controls {
+            margin: 20px 0;
+            display: flex;
+            gap: 10px;
+        }
+
+        .controls input, .controls select {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #f8f9fa;
+            cursor: pointer;
+            position: relative;
+        }
+
+        th:hover {
+            background-color: #e9ecef;
+        }
+
+        .sort-icon {
+            margin-left: 5px;
+            font-size: 0.8em;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .pagination button {
+            padding: 8px 16px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .pagination button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        .status-active {
+            color: green;
+            font-weight: bold;
+        }
+
+        .status-inactive {
+            color: red;
+            font-weight: bold;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+    </style>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+
+</head>
+<body>
+    <div class="container">
+        <h1>Hisobot Jadvali</h1>
+
+        <div class="card mb-4 p-3 shadow-sm">
+            <form method="get" class="row g-3">
+                <!-- Boshlanish sanasi -->
+                <div class="col-md-2">
+                    <label for="from_date" class="form-label">Boshlanish sanasi</label>
+                    <input type="date" id="from_date" name="from_date" 
+                        class="form-control" value="{{ selected_from }}" onchange="this.form.submit()">
+                </div>
+
+                <!-- Tugash sanasi -->
+                <div class="col-md-2">
+                    <label for="to_date" class="form-label">Tugash sanasi</label>
+                    <input type="date" id="to_date" name="to_date" 
+                        class="form-control" value="{{ selected_to }}" onchange="this.form.submit()">
+                </div>
+
+                <!-- Yetkazib beruvchi -->
+                <div class="col-md-4">
+                    <label class="form-label">Kim tomonidan kelgani</label>
+                    <input type="text" list="yetkazuvchilar" name="yetkazuvchi" class="form-control" placeholder="Yetkazib beruvchini kiriting" onchange="this.form.submit()" value="{{ selected_yetkazuvchi }}">
+                    <datalist id="yetkazuvchilar">
+                        {% for yetkazuvchi in yetkazuvchilar %}
+                            <option value="{{ yetkazuvchi.yetkazib_beruvchi }}"></option>
+                        {% endfor %}
+                    </datalist>
+                </div>
+
+                <div class="col-md-2">
+                    <label class="form-label">Xomashyo</label>
+                    <select name="xomashyo" class="form-select" onchange="this.form.submit()">
+                    <option value="">Xomashyolar</option>
+                    {% for xomashyo in xomashyolar %}
+                        <option value="{{ xomashyo.maxsulot_nomi }}" {% if xomashyo.maxsulot_nomi == selected_xomashyo %}selected{% endif %}>
+                        {{ xomashyo.maxsulot_nomi }}
+                        </option>
+                    {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-md-2">
+                    <label class="form-label">Zavodlar</label>
+                    <select name="zavod" class="form-select" onchange="this.form.submit()">
+                    <option value="">Zavodlar</option>
+                    {% for zavod in zavodlar %}
+                        <option value="{{ zavod.kamera_nomi }}" {% if zavod.kamera_nomi == selected_zavod %}selected{% endif %}>
+                        {{ zavod.kamera_nomi }}
+                        </option>
+                    {% endfor %}
+                    </select>
+                </div>
+            </form>
+        </div>
+
+        <div class="alert alert-info text-center fw-bold">
+            Jami summa: {{ jammi_summa|space_separate }}
+        </div>
+
+        <div class="alert alert-danger text-center fw-bold">
+            Jami miqdori: {{ umumiy_miqdor|space_separate }}
+        </div>
+
+
+        <div class="d-flex gap-3" style="margin-bottom: 30px; margin-top: 20px;">
+            <div class="alert alert-success flex-fill text-center mb-0">
+                N: <strong>{{ n_summa|space_separate }}</strong> so'm
+            </div>
+            <div class="alert alert-primary flex-fill text-center mb-0">
+                P: <strong>{{ p_summa|space_separate }}</strong> so'm
+            </div>
+        </div>
+
+        <div class="alert alert-danger text-center fw-bold">
+            Jami ishlatilgan: {{ umumiy_miqdor|space_separate }} kg
+        </div>
+
+
+        <div class="table-container">
+            <table id="reportTable">
+                <thead>
+                    <tr>
+                        <th class="text-center">Nomi</th>
+                        <th class="text-center">Miqdori</th>
+                        <th class="text-center">Yetkazib beruvchi</th>
+                        <th class="text-center">Narxi donasi</th>
+                        <th class="text-center">Jami narxi</th>
+                        <th class="text-center">N/P</th>
+                        <th class="text-center">Izoh</th>
+                        <th class="text-center">Zavod</th>
+                        <th class="text-center">Sana</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for hisobot in hisobotlar %}
+                        <tr>
+                            <td class="text-center">{{ hisobot.maxsulot_nomi.maxsulot_nomi }}</td>
+                            <td class="text-center">{{ hisobot.maxsulot_miqdori|space_separate }} {{ hisobot.maxsulot_nomi.birlik }}</td>
+                            <td class="text-center">{{ hisobot.yetkazuvchi }}</td>
+                            <td class="text-center">{{ hisobot.maxsulot_narxi|space_separate }}</td>
+                            <td class="text-center">{{ hisobot.jami_maxsulot_narxi|space_separate }}</td>
+                            <td class="text-center">{{ hisobot.tolov_turi }}</td>
+                            <td class="text-center">
+                                {% if hisobot.izoh %}
+                                    {{ hisobot.izoh }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td class="text-center">
+                            <td class="text-center">
+                                {% if hisobot.zavod.kamera_nomi %}
+                                    {{ hisobot.zavod.kamera_nomi }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                                </td class="text-center">
+                            <td class="text-center">{{ hisobot.sana|date:"d-m-Y H:i" }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <title>Otkat qo‘shish</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background: #f8f9fa;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .card {
+      border-radius: 1rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      width: 100%;
+      max-width: 500px;
+    }
+  </style>
+</head>
+<body>
+
+    <div class="card p-4">
+        <h4 class="mb-3 text-center">↩️ Otkat qo‘shish</h4>
+
+        <form action="{% url 'add_otkat' zakaz.id %}" method="post" id="otkatForm">
+            {% csrf_token %}
+
+            <div class="mb-3">
+                <label for="otkatNarx" class="form-label">Otkat narxi (so‘m)</label>
+                <input type="text" class="form-control" id="otkatNarx" name="narx" required>
+            </div>
+
+            <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" id="izohCheck" onclick="document.getElementById('izohBox').style.display=this.checked?'block':'none'">
+                <label class="form-check-label" for="izohCheck">Izoh qo‘shmoqchiman</label>
+            </div>
+
+            <div class="mb-3" id="izohBox" style="display:none;">
+                <label for="otkatIzoh" class="form-label">Izoh</label>
+                <textarea class="form-control" id="otkatIzoh" name="izoh" rows="3"></textarea>
+            </div>
+
+            <div class="d-flex justify-content-between">
+                <a href="{% url 'xaridor_kirim' %}" class="btn btn-secondary">❌ Bekor qilish</a>
+                <button type="submit" class="btn btn-primary">💾 Saqlash</button>
+            </div>
+        </form>
+    </div>
+
+<script>
+  // Checkbox bosilganda textarea ko‘rsatish / yashirish
+  document.getElementById("izohCheck").addEventListener("change", function() {
+    let box = document.getElementById("izohBox");
+    box.style.display = this.checked ? "block" : "none";
+  });
+
+  // Formani yuborish
+  document.getElementById("otkatForm").addEventListener("submit", function(e) {
+
+    const narx = document.getElementById("otkatNarx").value;
+    const izoh = document.getElementById("izohCheck").checked 
+                  ? document.getElementById("otkatIzoh").value 
+                  : "";
+
+  });
+
+  
+
+  const otkatInput = document.getElementById("otkatNarx");
+
+  otkatInput.addEventListener("input", function () {
+    // eski probellarni olib tashlaymiz
+    let value = this.value.replace(/\s/g, '');
+
+    // agar faqat son bo‘lsa
+    if (!isNaN(value) && value.length > 0) {
+      this.value = value.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+    } else {
+      this.value = '';
+    }
+  });
+</script>
+
+</body>
+</html>

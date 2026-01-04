@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="uz">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Mashina raqamini tanlash</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+
+<body class="bg-light">
+
+    <div class="container py-5">
+        <h3 class="mb-4"> {{ guruh.xojayini }} uchun mashina tanlang</h3>
+
+        <form method="post">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label for="mashinaSelect" class="form-label">Mashina raqami</label>
+                <!-- <select class="form-select" id="mashinaSelect" name="mashina" required>
+            <option value="">-- Tanlang --</option>
+            {% for mashina in mashinalar %}
+            <option value="{{ mashina.id }}">{{ mashina.mashina_raqami }}</option>
+            {% endfor %}
+        </select> -->
+                <input type="text" id="mashinaInput" name="mashina" class="form-control" list="mashinaSuggestions"
+                    required>
+
+                <datalist id="mashinaSuggestions">
+                    {% for mashina in mashinalar %}
+                    <option value="{{ mashina.mashina_raqami }}"></option>
+                    {% endfor %}
+                </datalist>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Tasdiqlash</button>
+        </form>
+    </div>
+
+</body>
+
+<script>
+    document.getElementById("mashinaInput").addEventListener("input", function (e) {
+        let raw = e.target.value.toUpperCase().replace(/\s/g, '');
+        let formatted = '';
+
+        if (raw.length <= 2) {
+            formatted = raw.replace(/[^0-9]/g, '');
+        } else {
+            const firstTwo = raw.slice(0, 2).replace(/[^0-9]/g, '');
+            const third = raw[2];
+
+            if (/[A-Z]/.test(third)) {
+                const A = third;
+                const digits = raw.slice(3, 6).replace(/[^0-9]/g, '');
+                const B = raw.slice(6, 8).replace(/[^A-Z]/g, '');
+                formatted = `${firstTwo} ${A}${digits ? ' ' + digits : ''}${B ? ' ' + B : ''}`;
+            } else if (/[0-9]/.test(third)) {
+                const digits = raw.slice(2, 5).replace(/[^0-9]/g, '');
+                const letters = raw.slice(5, 8).replace(/[^A-Z]/g, '');
+                formatted = `${firstTwo} ${digits}${letters ? ' ' + letters : ''}`;
+            } else {
+                formatted = firstTwo;
+            }
+        }
+
+        e.target.value = formatted.trim();
+
+        fetch(`/suggest-mashina/?q=${formatted}`)
+            .then(res => res.json())
+            .then(data => {
+                const datalist = document.getElementById('mashinaSuggestions');
+                datalist.innerHTML = '';
+                data.forEach(item => {
+                    const option = document.createElement('option');
+                    option.value = item;
+                    datalist.appendChild(option);
+                });
+            });
+    });
+</script>
+
+</html>
