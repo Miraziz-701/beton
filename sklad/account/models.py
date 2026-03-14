@@ -3,6 +3,7 @@ from django.contrib.auth.models import AbstractUser
 from django.utils import timezone
 from dateutil.relativedelta import relativedelta
 from asgiref.sync import sync_to_async
+from datetime import timedelta
 
 
 # Create your models here.
@@ -73,18 +74,6 @@ class BetonMarkasi(models.Model):
     def __str__(self):
         return self.markasi
     
-class Orders(models.Model):
-    agent = models.ForeignKey(to=Agents, on_delete=models.CASCADE)
-    money_type = models.CharField()
-    obyekt_id = models.IntegerField()
-    product = models.ForeignKey(to=BetonMarkasi, on_delete=models.CASCADE)
-    quantity = models.FloatField()
-    price = models.IntegerField()
-    otkat = models.FloatField(default=0)
-    time = models.TextField()
-    description = models.TextField()
-    phone_number = models.CharField(max_length=9)
-    date = models.DateField(auto_now_add=True)
 
 
 
@@ -97,7 +86,7 @@ class Kamera(models.Model):
 
 class Mashina(models.Model):
     mashina_raqami = models.CharField()
-    telefon_raqami = models.CharField()
+    telefon_raqami = models.CharField(null=True)
     telegram_id = models.IntegerField(default=0)
 
     def __str__(self):
@@ -126,11 +115,26 @@ class SkladYetkazuvchi(models.Model):
 
 class SkladProducts(models.Model):
     maxsulot_nomi = models.CharField()
-    soni = models.BigIntegerField(default=0)
+    soni = models.FloatField(default=0)
     birlik = models.CharField(null=True)
 
     def __str__(self):
         return self.maxsulot_nomi
+
+
+class Orders(models.Model):
+    agent = models.ForeignKey(to=Agents, on_delete=models.CASCADE)
+    money_type = models.CharField()
+    obyekt_id = models.IntegerField()
+    product = models.ForeignKey(to=BetonMarkasi, on_delete=models.CASCADE, null=True)
+    xomashyo = models.ForeignKey(to=SkladProducts, on_delete=models.CASCADE, null=True)
+    quantity = models.FloatField()
+    price = models.IntegerField()
+    otkat = models.FloatField(default=0)
+    time = models.TextField()
+    description = models.TextField()
+    phone_number = models.CharField(max_length=9)
+    date = models.DateField(auto_now_add=True)
 
 
 class Sklad(models.Model):
@@ -178,13 +182,13 @@ class SkladRetsept(models.Model):
         return str(self.maxsulot)
     
 
-class SementZavod(models.Model):
-    sement_nomi = models.ForeignKey(to=SkladProducts, on_delete=models.CASCADE)
-    sement_miqdori = models.BigIntegerField(default=0)
+class XomashyoZavod(models.Model):
+    xomashyo_nomi = models.ForeignKey(to=SkladProducts, on_delete=models.CASCADE)
+    xomashyo_miqdori = models.FloatField(default=0)
     zavod = models.ForeignKey(to=Kamera, on_delete=models.CASCADE)
 
     def __str__(self):
-        return str(self.sement_nomi)
+        return str(self.xomashyo_nomi)
 
 
 class Retsept(models.Model):
@@ -333,6 +337,13 @@ class Asosiy(models.Model):
             obyekt = NaqdObyekts.objects.filter(pk=self.obyekt_id).first()
 
         return obyekt.obyekt_name if obyekt else "-"
+    
+    @classmethod
+    def get_maxsulot_id(self):
+        product = Asosiy.objects.order_by("-date").first()
+        return product.id
+    
+    
 
 
     def __str__(self):
@@ -379,15 +390,25 @@ class data:
 
     @sync_to_async
     def see_product_id(self, product_name):
-        return BetonMarkasi.objects.filter(markasi=product_name).values_list('id', flat=True).first()
+        product_pk = BetonMarkasi.objects.filter(markasi=product_name).values_list('id', flat=True).first()
+
+        if product_pk:
+            return product_pk
+
+        else:
+            return SkladProducts.objects.filter(maxsulot_nomi=product_name).values_list('id', flat=True).first()
+            
     
     @sync_to_async
     def select_agent_id(self, telegram_id):
         return Agents.objects.filter(telegram_id=telegram_id).values_list('id', flat=True).first()
     
     @sync_to_async
-    def add_order(self, agent_id, money_type, obyekt_id, product_id, quantity, price, time, description, phone_number, otkat=0):
-        return Orders.objects.create(agent_id=agent_id, money_type=money_type, obyekt_id=obyekt_id, product_id=product_id, quantity=quantity, price=price, otkat=otkat, time=time, description=description, phone_number=phone_number)
+    def add_order(self, agent_id, money_type, obyekt_id, product_id, xomashyo_id, quantity, price, time, description, phone_number, otkat=0):
+        if product_id:
+            return Orders.objects.create(agent_id=agent_id, money_type=money_type, obyekt_id=obyekt_id, product_id=product_id, quantity=quantity, price=price, otkat=otkat, time=time, description=description, phone_number=phone_number)
+        else:
+            return Orders.objects.create(agent_id=agent_id, money_type=money_type, obyekt_id=obyekt_id, xomashyo_id=xomashyo_id, quantity=quantity, price=price, otkat=otkat, time=time, description=description, phone_number=phone_number)
 
     @sync_to_async
     def see_products(self):
@@ -396,12 +417,32 @@ class data:
         )
     
     @sync_to_async
-    def see_naqd_obyekts(self):
-        return list(NaqdObyekts.objects.values_list('obyekt_name', flat=True))
+    def see_xomashyos(self):
+        return list(
+            SkladProducts.objects.values_list("maxsulot_nomi", flat=True)
+        )
     
     @sync_to_async
-    def see_pri_obyekts(self):
-        return list(PriObyekts.objects.values_list('obyekt_name', flat=True))
+    def see_naqd_obyekts(self, agent_id):
+        obyekt_ids = Orders.objects.filter(
+            agent_id=agent_id,
+            money_type='Naqd'
+        ).values_list('obyekt_id', flat=True)
+    
+        return list(
+            NaqdObyekts.objects.filter(id__in=obyekt_ids)
+        )
+    
+    @sync_to_async
+    def see_pri_obyekts(self, agent_id):
+        obyekt_ids = Orders.objects.filter(
+            agent_id=agent_id,
+            money_type='Pri'
+        ).values_list('obyekt_id', flat=True)
+    
+        return list(
+            PriObyekts.objects.filter(id__in=obyekt_ids)
+        )
 
     @sync_to_async
     def see_naqd_obyekt_info(self, obyekt_name): 

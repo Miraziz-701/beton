@@ -1,4 +1,6 @@
 from django.shortcuts import render, HttpResponseRedirect, redirect, get_object_or_404
+from .excel_service import write_to_excel, delete_from_excel
+from zoneinfo import ZoneInfo
 from account.forms import (AdminLoginForm, AddProductForm, AddMijozForm, AddJonatuvchiForm,  AddKameraForm, 
 AddObyektForm, AddBetonMarkaForm, AddXojayinForm, AddKirimForm, ChangeJonatuvchiForm, AddSkladProductsForm, 
 AddYetkazibBeruvchiForm, AddRetseptForm, RetseptFormSet, AddChiqimForm, AddIshchiForm, AddKelmaganIshchilarForm, AddTestProductForm)
@@ -9,7 +11,7 @@ from django.urls import reverse
 from decimal import Decimal
 from django.contrib.auth.decorators import login_required
 from account.models import (Mijoz, Obyekt, Jonativchi, Kamera, Asosiy, BetonMarkasi, Mashina, Guruh, Kirim, KelmaganIshchilar, PriObyekts, NaqdObyekts, Agents,
-KirimTuri, Retsept, SkladProducts, SementZavod, Sklad, SkladYetkazuvchi, ChiqimMashina, ChiqimTotal, ChiqimTuri, Ishchi, SkladRetsept, DetailXomashyo, Orders)
+KirimTuri, Retsept, SkladProducts, XomashyoZavod, Sklad, SkladYetkazuvchi, ChiqimMashina, ChiqimTotal, ChiqimTuri, Ishchi, SkladRetsept, DetailXomashyo, Orders)
 from django.http import JsonResponse
 from django.db.models.functions import TruncDate
 from collections import defaultdict
@@ -41,6 +43,7 @@ import json
 from collections import OrderedDict
 from django.db import transaction
 from math import ceil
+from django.forms.models import model_to_dict
 
 
 # Create your views here.
@@ -198,100 +201,103 @@ def home(request):
         'selected_zavod': selected_zavod,
         'selected_obyekt': selected_obyekt
     })
+
+
     
+        
 
 # --- FIFO: partiyalarni iste'mol qiladi; defitsit bo'lsa SkladRetseptga yangi batch yaratadi ---
-def fifo_cost_and_consume(*, maxsulot, kerak_miqdor, zavod=None, when=None):
-    """
-    FIFO bo'yicha partiyalarni iste'mol qiladi va jami tan narxni qaytaradi.
-    Yetmasa, oxirgi narx bo'yicha defitsit partiya yaratadi (qancha_qolgani=0).
-    """
-    if not kerak_miqdor or kerak_miqdor <= 0:
-        return 0, []
+# def fifo_cost_and_consume(*, maxsulot, kerak_miqdor, zavod=None, when=None):
+#     """
+#     FIFO bo'yicha partiyalarni iste'mol qiladi va jami tan narxni qaytaradi.
+#     Yetmasa, oxirgi narx bo'yicha defitsit partiya yaratadi (qancha_qolgani=0).
+#     """
+#     if not kerak_miqdor or kerak_miqdor <= 0:
+#         return 0, []
 
-    kerak_miqdor = Decimal(kerak_miqdor)
-    when = when or timezone.now()
+#     kerak_miqdor = Decimal(kerak_miqdor)
+#     when = when or timezone.now()
 
-    qs = SkladRetsept.objects.filter(maxsulot=maxsulot)
-    if zavod is not None:
-        qs = qs.filter(zavod=zavod)
-    qs = qs.order_by('olingan_sana', 'id')  # eng eski birinchi
+#     qs = SkladRetsept.objects.filter(maxsulot=maxsulot)
+#     if zavod is not None:
+#         qs = qs.filter(zavod=zavod)
+#     qs = qs.order_by('olingan_sana', 'id')  # eng eski birinchi
 
-    jami_tan_narx = 0
-    consumed = []
+#     jami_tan_narx = 0
+#     consumed = []
 
-    with transaction.atomic():
-        batches = list(qs.select_for_update())
-        kerak = kerak_miqdor
+#     with transaction.atomic():
+#         batches = list(qs.select_for_update())
+#         kerak = kerak_miqdor
 
-        for b in batches:
-            if kerak <= 0:
-                break
+#         for b in batches:
+#             if kerak <= 0:
+#                 break
             
-            available = Decimal(str(b.qancha_qolgani or 0))
+#             available = Decimal(str(b.qancha_qolgani or 0))
             
-            if available <= 0:
-                continue
+#             if available <= 0:
+#                 continue
 
-            take = min(kerak, available)
+#             take = min(kerak, available)
             
-            take = Decimal(take)
-            narx = Decimal(str(b.narxi_donasi)) 
+#             take = Decimal(take)
+#             narx = Decimal(str(b.narxi_donasi)) 
             
-            jami_tan_narx += take * narx
+#             jami_tan_narx += take * narx
             
-            take = Decimal(str(take))
+#             take = Decimal(str(take))
 
-            b.qancha_qolgani = available - take
-            b.save(update_fields=['qancha_qolgani'])
+#             b.qancha_qolgani = available - take
+#             b.save(update_fields=['qancha_qolgani'])
 
-            consumed.append({
-                "batch_id": b.id,
-                "maxsulot": str(maxsulot),   # 🔹 Mahsulot nomini qo‘shdik
-                "olingan_sana": b.olingan_sana,
-                "narxi_donasi": float(b.narxi_donasi),
-                "olingan": take,
-                "is_deficit": False,
-            })
-            kerak -= take
+#             consumed.append({
+#                 "batch_id": b.id,
+#                 "maxsulot": str(maxsulot),   # 🔹 Mahsulot nomini qo‘shdik
+#                 "olingan_sana": b.olingan_sana,
+#                 "narxi_donasi": float(b.narxi_donasi),
+#                 "olingan": take,
+#                 "is_deficit": False,
+#             })
+#             kerak -= take
 
-        if kerak > 0:
-            # Oxirgi narxni topamiz
-            price_qs = SkladRetsept.objects.filter(maxsulot=maxsulot)
-            if zavod is not None:
-                price_qs = price_qs.filter(zavod=zavod)
-            price_qs = price_qs.order_by('-olingan_sana', '-id')
+#         if kerak > 0:
+#             # Oxirgi narxni topamiz
+#             price_qs = SkladRetsept.objects.filter(maxsulot=maxsulot)
+#             if zavod is not None:
+#                 price_qs = price_qs.filter(zavod=zavod)
+#             price_qs = price_qs.order_by('-olingan_sana', '-id')
             
-            last_price = 0
+#             last_price = 0
             
-            for p in price_qs.values_list('narxi_donasi', flat=True):
-                if p and float(p) > 0:   # 0 yoki None bo‘lsa tashlab ketadi
-                    last_price = float(p)
-                    break
+#             for p in price_qs.values_list('narxi_donasi', flat=True):
+#                 if p and float(p) > 0:   # 0 yoki None bo‘lsa tashlab ketadi
+#                     last_price = float(p)
+#                     break
 
-            # Defitsit uchun partiya (darhol iste'mol qilingan)
-            new_batch = SkladRetsept.objects.create(
-                maxsulot=maxsulot,
-                zavod=zavod,
-                keltirilgan_miqdor=kerak,
-                qancha_qolgani=0,
-                narxi_donasi=last_price,
-                olingan_sana=when,
-            )
+#             # Defitsit uchun partiya (darhol iste'mol qilingan)
+#             new_batch = SkladRetsept.objects.create(
+#                 maxsulot=maxsulot,
+#                 zavod=zavod,
+#                 keltirilgan_miqdor=kerak,
+#                 qancha_qolgani=0,
+#                 narxi_donasi=last_price,
+#                 olingan_sana=when,
+#             )
             
-            last_price = Decimal(str(last_price))
+#             last_price = Decimal(str(last_price))
             
-            jami_tan_narx += kerak * last_price
-            consumed.append({
-                "batch_id": new_batch.id,
-                "maxsulot": str(maxsulot),   # 🔹 Mahsulot nomini qo‘shdik
-                "olingan_sana": new_batch.olingan_sana,
-                "narxi_donasi": last_price,
-                "olingan": kerak,
-                "is_deficit": True,
-            })
+#             jami_tan_narx += kerak * last_price
+#             consumed.append({
+#                 "batch_id": new_batch.id,
+#                 "maxsulot": str(maxsulot),   # 🔹 Mahsulot nomini qo‘shdik
+#                 "olingan_sana": new_batch.olingan_sana,
+#                 "narxi_donasi": last_price,
+#                 "olingan": kerak,
+#                 "is_deficit": True,
+#             })
 
-    return jami_tan_narx, consumed
+#     return jami_tan_narx, consumed
 
 # @login_required 
 # @user_passes_test(lambda u: u.is_superuser, login_url='login') 
@@ -1356,6 +1362,15 @@ def suggest_common(request, model_name, field_name):
     return JsonResponse(list(objects.values_list(field_name, flat=True)[:10]), safe=False)
 
 @login_required
+def product_decrease(product_id):
+    product_info = Asosiy.objects.get(pk=product_id)
+    if product_info.maxsulot_markasi:
+        print(product_info.maxsulot_markasi)
+    
+    else:
+        print(product_info.xomashyo)
+
+@login_required
 def add_product(request):
     if request.method == 'POST':
         form = AddProductForm(data=request.POST)
@@ -1365,8 +1380,8 @@ def add_product(request):
             tashkilot_nomi = form.cleaned_data['tashkilot_nomi']
             obyekt_name = form.cleaned_data['obyekt_text']
             kim_tomonidan_jonatilgani = form.cleaned_data['kim_tomonidan_jonatilgani']
+            qogozdagi_soni = form.cleaned_data['qogozdagi_maxsulot_soni']
             umumiy_maxsulot = form.cleaned_data['umumiy_maxsulot']
-            qogozdagi_maxsulot_soni = form.cleaned_data['qogozdagi_maxsulot_soni']
             mashina_obj, _ = Mashina.objects.get_or_create(mashina_raqami=mashina_raqami)
             product.mashina = mashina_obj
             umumiy = form.cleaned_data.get("umumiy_maxsulot")
@@ -1378,46 +1393,74 @@ def add_product(request):
                         obyekt_name__iexact=obyekt_name,
                         tashkilot_name__iexact=tashkilot_nomi
                     )
-                    .first()
+                    .last()
                 )
 
                 obyekt_id = obyekt.pk
 
 
                 product_id = int(umumiy_maxsulot.split("_")[-1])
+
 
                 agent = Agents.objects.get(full_name=kim_tomonidan_jonatilgani)
 
                 order = Orders.objects.filter(agent=agent.pk, money_type="Pri", obyekt_id = obyekt_id, product = product_id).order_by("-date").first()
                 product.obyekt_id = obyekt.pk
                 product.tashkilot_nomi = obyekt
+                if order:
+                    order = order
+                else:
+                    order = Orders.objects.filter(agent=agent.pk, money_type="Pri", obyekt_id = obyekt_id, xomashyo = product_id).order_by("-date").first()
+                product.mijoz_qoygan_narx = order.price
+                total_sum = order.price * qogozdagi_soni
+                product.mijoz_jami_qoygan_narx = total_sum  
                 product.xarajat_narxi = order.otkat
+                    
             
             else:
                 obyekt = (
-                    NaqdObyekts.objects.filter(obyekt_name__iexact=obyekt_name).first()
+                    NaqdObyekts.objects
+                    .filter(
+                        obyekt_name__iexact=obyekt_name
+                    )
+                    .last()
                 )
 
                 obyekt_id = obyekt.pk
+
 
                 product_id = int(umumiy_maxsulot.split("_")[-1])
 
                 agent = Agents.objects.get(full_name=kim_tomonidan_jonatilgani)
 
                 order = Orders.objects.filter(agent=agent.pk, money_type="Naqd", obyekt_id = obyekt_id, product = product_id).order_by("-date").first()
+                if order:
+                    order = order
+                else:
+                    order = Orders.objects.filter(agent=agent.pk, money_type="Naqd", obyekt_id = obyekt_id, xomashyo = product_id).order_by("-date").first()
+                
                 product.obyekt_id = obyekt.pk
-
-
-            start = order.date
-            end = order.date + timedelta(days=2)
-            today = timezone.now().date()  
-
-            if start <= today <= end:
                 product.mijoz_qoygan_narx = order.price
-                product.mijoz_jami_qoygan_narx = order.price * qogozdagi_maxsulot_soni
+                total_sum = order.price * qogozdagi_soni
+                product.mijoz_jami_qoygan_narx = total_sum 
+
+
+            # start = order.date
+
+            # print(order.date)
+
+            # end = order.date + timedelta(days=2)
+            # today = timezone.localdate()  
+
+            # print(today)
+            # print(end)
+
+            # if start <= today <= end:
+            #     product.mijoz_qoygan_narx = order.price
+            #     product.mijoz_jami_qoygan_narx = order.price * qogozdagi_maxsulot_soni
             
-            else:
-                print(f"Narx topilmadi {timezone.now()}")
+            # else:
+            #     print(f"Narx topilmadi {timezone.now()}")
 
             if umumiy:
                 if umumiy.startswith("beton_"):
@@ -1431,273 +1474,401 @@ def add_product(request):
 
             product.save()
 
+            product_id = Asosiy.get_maxsulot_id()
+            
+            product = Asosiy.objects.get(pk=product_id)
 
+            if product.xomashyo:
+                xomashyo = product.xomashyo
+                xomashyo1 = SkladProducts.objects.get(maxsulot_nomi=xomashyo.maxsulot_nomi)
+                xomashyo1.soni -= product.maxsulot_soni
+                xomashyo1.save()
+                xomashyo2, _ = XomashyoZavod.objects.get_or_create(
+                        xomashyo_nomi=xomashyo,
+                        zavod=product.kamera
+                )
+                xomashyo2.xomashyo_miqdori -= product.maxsulot_soni
+                xomashyo2.save()
+                izoh = product.xomashyo_izohi or ""
+                
+                last_price = SkladRetsept.objects.filter(maxsulot = xomashyo).order_by("-olingan_sana").first().narxi_donasi
 
-            with transaction.atomic():
-                # 0) Zakazni lock qilamiz
-                item = Asosiy.objects.select_for_update().get(pk=product.pk)
+                umumiy_narx = last_price * product.qogozdagi_maxsulot_soni
 
-                # Toggle
-                # item.checked = not item.checked
-                # item.save(update_fields=["checked"])
+                DetailXomashyo.objects.create(
+                    xomashyo=xomashyo,
+                    izoh=izoh,
+                    miqdori=product.maxsulot_soni,
+                    narxi_donasi=last_price,
+                    total_narx=umumiy_narx,
+                    zavod=product.kamera
+                )
 
-                # all_checked True bo‘lsa — qayta sarf/yozish yo‘q
-                if item.all_checked:
-                    return JsonResponse({'status': 'skipped', 'selected': item.checked})
+                if product.tashkilot_nomi:
+                    mijoz = product.tashkilot_nomi.tashkilot_name
+                    bonus = product.xarajat_narxi
+                else:
+                    mijoz = product.kim_tomonidan_jonatilgani.full_name
+                    bonus = 0
                     
-                if item.xomashyo and not item.maxsulot_markasi:
-                    sklad = SkladProducts.objects.select_for_update().get(pk=item.xomashyo.pk)
+                tashkent_time = product.date.astimezone(ZoneInfo("Asia/Tashkent")).replace(tzinfo=None)
 
-                    # sement bo‘lsa zavod bo‘yicha mavjud miqdor, bo‘lmasa umumiy soni
-                    if "sement" in (item.xomashyo.maxsulot_nomi or "").lower():
-                        sz, _ = SementZavod.objects.get_or_create(
-                            sement_nomi=item.xomashyo,
-                            zavod=item.kamera,
-                            defaults={"sement_miqdori": 0}
-                        )
-                        mavjud = sz.sement_miqdori
-                        last_prices = (
-                            Sklad.objects.filter(maxsulot_nomi=item.xomashyo, zavod=item.kamera)
-                            .order_by("-sana", "-id")
-                            .values_list("maxsulot_narxi", flat=True)
-                        )
-                    else:
-                        mavjud = sklad.soni
-                        last_prices = (
-                            Sklad.objects.filter(maxsulot_nomi=item.xomashyo)
-                            .order_by("-sana", "-id")
-                            .values_list("maxsulot_narxi", flat=True)
-                        )
+                write_to_excel({
+                    "agent": product.kim_tomonidan_jonatilgani.full_name,
+                    "obyekt": obyekt.obyekt_name,
+                    "sana": tashkent_time,
+                    "mijoz": mijoz,
+                    "marka": product.xomashyo.maxsulot_nomi,
+                    "mashina": product.mashina.mashina_raqami,
+                    "qogoz": product.qogozdagi_maxsulot_soni,
+                    "kuba": product.mijoz_qoygan_narx,
+                    "bonus": bonus,
+                    "umumiy": product.mijoz_jami_qoygan_narx
+                })
 
-                    # narxni topish
-                    oxirgi_narx = 0
-                    for price in last_prices:
-                        if price and price > 0:
-                            oxirgi_narx = price
-                            break
 
-                    # ✅ Yetarli bo‘lsa kamaytirish
-                    if mavjud >= item.maxsulot_soni:
-                        if "sement" in (item.xomashyo.maxsulot_nomi or "").lower():
-                            SementZavod.objects.filter(pk=sz.pk).update(
-                                sement_miqdori=F("sement_miqdori") - float(item.maxsulot_soni)
-                            )   
-                        else:
-                            SkladProducts.objects.filter(pk=sklad.pk).update(
-                                soni=F("soni") - float(item.maxsulot_soni)
-                            )
+            else:
+                marka = product.maxsulot_markasi.pk
+                # print(marka)
+                retsept_date = Retsept.objects.filter(retsept_nomi=marka).order_by("-date").first().date
+                restsept_start_date = retsept_date - timedelta(minutes=3)
+                xomashyolar = Retsept.objects.filter(
+                    retsept_nomi = marka,
+                    date__range = (restsept_start_date, retsept_date)
+                )
+                l = {}
+                for xomashyo in xomashyolar:
+                    l[xomashyo.maxsulot.maxsulot_nomi] = xomashyo.miqdor
+                    xomashyo1 = SkladProducts.objects.get(maxsulot_nomi=xomashyo.maxsulot)
+                    # print(xomashyo1)
+                    decrease = xomashyo.miqdor * product.maxsulot_soni
+                    xomashyo1.soni-=decrease
+                    xomashyo1.save()
+                    zavod, _ = XomashyoZavod.objects.get_or_create(
+                        xomashyo_nomi=xomashyo.maxsulot,
+                        zavod=product.kamera
+                    )
+                    zavod.xomashyo_miqdori-=decrease
+                    zavod.save()
 
-                        DetailXomashyo.objects.create(
-                            maxsulot=None,
-                            xomashyo=item.xomashyo,
-                            izoh=item.xomashyo_izohi,
-                            miqdori=item.maxsulot_soni,
-                            narxi_donasi=oxirgi_narx,
-                            total_narx=item.maxsulot_soni * oxirgi_narx,
-                            zavod=item.kamera,
-                            vaqti=item.date
-                        )
-                        item.maxsulot_tan_narx = item.maxsulot_soni * oxirgi_narx
+                    last_price = SkladRetsept.objects.filter(maxsulot = xomashyo.maxsulot).order_by("-olingan_sana").first().narxi_donasi
 
-                    else:
-                        # ❌ Yetarli emas → defitsit
-                        kerak = item.maxsulot_soni - mavjud
+                    # print(last_price)
 
-                        # mavjud qismni nolga tushirib yuboramiz
-                        if "sement" in (item.xomashyo.maxsulot_nomi or "").lower():
-                            SementZavod.objects.filter(pk=sz.pk).update(
-                                sement_miqdori = F("sement_miqdori") - float(item.maxsulot_soni)
-                            )
+                    DetailXomashyo.objects.create(
+                        maxsulot = product.maxsulot_markasi,
+                        xomashyo = xomashyo.maxsulot,
+                        miqdori = decrease,
+                        narxi_donasi = last_price,
+                        total_narx = last_price * decrease,
+                        zavod=product.kamera
+                    )
 
-                        else:
-                            SkladProducts.objects.filter(pk=sklad.pk).update(
-                                soni = F("soni") - float(item.maxsulot_soni)
-                            )
+                if product.tashkilot_nomi:
+                    mijoz = product.tashkilot_nomi.tashkilot_name
+                    bonus = product.xarajat_narxi
+                else:
+                    mijoz = product.kim_tomonidan_jonatilgani.full_name
+                    bonus = 0
+                    
+                tashkent_time = product.date.astimezone(ZoneInfo("Asia/Tashkent")).replace(tzinfo=None)
 
-                        DetailXomashyo.objects.create(
-                            maxsulot=None,
-                            xomashyo=item.xomashyo,
-                            izoh=item.xomashyo_izohi,
-                            miqdori=mavjud,
-                            narxi_donasi=oxirgi_narx,
-                            total_narx=mavjud * oxirgi_narx,
-                            zavod=item.kamera,  
-                            vaqti=item.date
-                        )
+                write_to_excel({
+                    "agent": product.kim_tomonidan_jonatilgani.full_name,
+                    "obyekt": obyekt.obyekt_name,
+                    "sana": tashkent_time,
+                    "mijoz": mijoz,
+                    "marka": product.maxsulot_markasi.markasi,
+                    "mashina": product.mashina.mashina_raqami,
+                    "qogoz": product.qogozdagi_maxsulot_soni,
+                    "kuba": product.mijoz_qoygan_narx,
+                    "bonus": bonus,
+                    "umumiy": product.mijoz_jami_qoygan_narx
+                })
 
-                        # 🔥 Defitsit ham yoziladi
-                        DetailXomashyo.objects.create(
-                            maxsulot=None,
-                            xomashyo=item.xomashyo,
-                            izoh=item.xomashyo_izohi,
-                            miqdori=kerak,
-                            narxi_donasi=oxirgi_narx,
-                            total_narx=kerak * oxirgi_narx,
-                            zavod=item.kamera,
-                            vaqti=item.date
-                        )
 
-                        # Avto-kirim yozish
-                        # yetkazuvchi_obj, _ = SkladYetkazuvchi.objects.get_or_create(
-                        #     yetkazib_beruvchi=item.kamera.kamera_nomi
-                        # )
-                        # Sklad.objects.create(
-                        #     maxsulot_nomi=item.xomashyo,
-                        #     maxsulot_miqdori=kerak,
-                        #     maxsulot_narxi=oxirgi_narx,
-                        #     jami_maxsulot_narxi=kerak * oxirgi_narx,
-                        #     tolov_turi='N',
-                        #     yetkazuvchi=yetkazuvchi_obj,
-                        #     zavod=item.kamera,
-                        #     izoh=f"Avtomatik defitsit (Zakaz ID: {item.pk})",
-                        #     sana=timezone.now(),
-                        # )
+                    
 
-                        item.maxsulot_tan_narx = item.maxsulot_soni * oxirgi_narx
 
-                    item.tan_narxi_qoyildi = True
-                    item.all_checked = True
-                    item.save(update_fields=["maxsulot_tan_narx", "tan_narxi_qoyildi", "all_checked"])
+                # print(l)
 
-                    return JsonResponse({
-                        'status': 'ok',
-                        'selected': item.checked,
-                        'jami_tan_narx': item.maxsulot_tan_narx
-                    })
+
+            # print(model_to_dict(product))
+
+            # product_decrease(product_id)
+
+            # with transaction.atomic():
+            #     # 0) Zakazni lock qilamiz
+            #     item = Asosiy.objects.select_for_update().get(pk=product.pk)
+
+            #     # Toggle
+            #     # item.checked = not item.checked
+            #     # item.save(update_fields=["checked"])
+
+            #     # all_checked True bo‘lsa — qayta sarf/yozish yo‘q
+            #     if item.all_checked:
+            #         return JsonResponse({'status': 'skipped', 'selected': item.checked})
+                    
+            #     if item.xomashyo and not item.maxsulot_markasi:
+            #         sklad = SkladProducts.objects.select_for_update().get(pk=item.xomashyo.pk)
+
+            #         # sement bo‘lsa zavod bo‘yicha mavjud miqdor, bo‘lmasa umumiy soni
+            #         if "sement" in (item.xomashyo.maxsulot_nomi or "").lower():
+            #             sz, _ = SementZavod.objects.get_or_create(
+            #                 sement_nomi=item.xomashyo,
+            #                 zavod=item.kamera,
+            #                 defaults={"sement_miqdori": 0}
+            #             )
+            #             mavjud = sz.sement_miqdori
+            #             last_prices = (
+            #                 Sklad.objects.filter(maxsulot_nomi=item.xomashyo, zavod=item.kamera)
+            #                 .order_by("-sana", "-id")
+            #                 .values_list("maxsulot_narxi", flat=True)
+            #             )
+            #         else:
+            #             mavjud = sklad.soni
+            #             last_prices = (
+            #                 Sklad.objects.filter(maxsulot_nomi=item.xomashyo)
+            #                 .order_by("-sana", "-id")
+            #                 .values_list("maxsulot_narxi", flat=True)
+            #             )
+
+            #         # narxni topish
+            #         oxirgi_narx = 0
+            #         for price in last_prices:
+            #             if price and price > 0:
+            #                 oxirgi_narx = price
+            #                 break
+
+            #         # ✅ Yetarli bo‘lsa kamaytirish
+            #         if mavjud >= item.maxsulot_soni:
+            #             if "sement" in (item.xomashyo.maxsulot_nomi or "").lower():
+            #                 SementZavod.objects.filter(pk=sz.pk).update(
+            #                     sement_miqdori=F("sement_miqdori") - float(item.maxsulot_soni)
+            #                 )   
+            #             else:
+            #                 SkladProducts.objects.filter(pk=sklad.pk).update(
+            #                     soni=F("soni") - float(item.maxsulot_soni)
+            #                 )
+
+            #             DetailXomashyo.objects.create(
+            #                 maxsulot=None,
+            #                 xomashyo=item.xomashyo,
+            #                 izoh=item.xomashyo_izohi,
+            #                 miqdori=item.maxsulot_soni,
+            #                 narxi_donasi=oxirgi_narx,
+            #                 total_narx=item.maxsulot_soni * oxirgi_narx,
+            #                 zavod=item.kamera,
+            #                 vaqti=item.date
+            #             )
+            #             item.maxsulot_tan_narx = item.maxsulot_soni * oxirgi_narx
+
+            #         else:
+            #             # ❌ Yetarli emas → defitsit
+            #             kerak = item.maxsulot_soni - mavjud
+
+            #             # mavjud qismni nolga tushirib yuboramiz
+            #             if "sement" in (item.xomashyo.maxsulot_nomi or "").lower():
+            #                 SementZavod.objects.filter(pk=sz.pk).update(
+            #                     sement_miqdori = F("sement_miqdori") - float(item.maxsulot_soni)
+            #                 )
+
+            #             else:
+            #                 SkladProducts.objects.filter(pk=sklad.pk).update(
+            #                     soni = F("soni") - float(item.maxsulot_soni)
+            #                 )
+
+            #             DetailXomashyo.objects.create(
+            #                 maxsulot=None,
+            #                 xomashyo=item.xomashyo,
+            #                 izoh=item.xomashyo_izohi,
+            #                 miqdori=mavjud,
+            #                 narxi_donasi=oxirgi_narx,
+            #                 total_narx=mavjud * oxirgi_narx,
+            #                 zavod=item.kamera,  
+            #                 vaqti=item.date
+            #             )
+
+            #             # 🔥 Defitsit ham yoziladi
+            #             DetailXomashyo.objects.create(
+            #                 maxsulot=None,
+            #                 xomashyo=item.xomashyo,
+            #                 izoh=item.xomashyo_izohi,
+            #                 miqdori=kerak,
+            #                 narxi_donasi=oxirgi_narx,
+            #                 total_narx=kerak * oxirgi_narx,
+            #                 zavod=item.kamera,
+            #                 vaqti=item.date
+            #             )
+
+            #             # Avto-kirim yozish
+            #             # yetkazuvchi_obj, _ = SkladYetkazuvchi.objects.get_or_create(
+            #             #     yetkazib_beruvchi=item.kamera.kamera_nomi
+            #             # )
+            #             # Sklad.objects.create(
+            #             #     maxsulot_nomi=item.xomashyo,
+            #             #     maxsulot_miqdori=kerak,
+            #             #     maxsulot_narxi=oxirgi_narx,
+            #             #     jami_maxsulot_narxi=kerak * oxirgi_narx,
+            #             #     tolov_turi='N',
+            #             #     yetkazuvchi=yetkazuvchi_obj,
+            #             #     zavod=item.kamera,
+            #             #     izoh=f"Avtomatik defitsit (Zakaz ID: {item.pk})",
+            #             #     sana=timezone.now(),
+            #             # )
+
+            #             item.maxsulot_tan_narx = item.maxsulot_soni * oxirgi_narx
+
+            #         item.tan_narxi_qoyildi = True
+            #         item.all_checked = True
+            #         item.save(update_fields=["maxsulot_tan_narx", "tan_narxi_qoyildi", "all_checked"])
+
+            #         return JsonResponse({
+            #             'status': 'ok',
+            #             'selected': item.checked,
+            #             'jami_tan_narx': item.maxsulot_tan_narx
+            #         })
                 
 
-                # 1) Oxirgi retsept vaqtini topamiz (shu marka bo‘yicha)
-                oxirgi_vaqt = (
-                    Retsept.objects
-                    .filter(retsept_nomi=item.maxsulot_markasi)
-                    .order_by('-date')
-                    .values_list('date', flat=True)
-                    .first()
-                )
-                if not oxirgi_vaqt:
-                    return JsonResponse({'status': 'error', 'message': 'Retsept topilmadi'}, status=404)
+            #     # 1) Oxirgi retsept vaqtini topamiz (shu marka bo‘yicha)
+            #     oxirgi_vaqt = (
+            #         Retsept.objects
+            #         .filter(retsept_nomi=item.maxsulot_markasi)
+            #         .order_by('-date')
+            #         .values_list('date', flat=True)
+            #         .first()
+            #     )
+            #     if not oxirgi_vaqt:
+            #         return JsonResponse({'status': 'error', 'message': 'Retsept topilmadi'}, status=404)
 
-                start = oxirgi_vaqt - timedelta(minutes=1)
-                end   = oxirgi_vaqt + timedelta(minutes=1)
+            #     start = oxirgi_vaqt - timedelta(minutes=1)
+            #     end   = oxirgi_vaqt + timedelta(minutes=1)
 
-                # 2) Shu retsept_nomi + vaqt oralig‘idagi barcha yozuvlar
-                toliq_guruh = list(
-                    Retsept.objects
-                    .filter(retsept_nomi=item.maxsulot_markasi, date__range=(start, end))
-                    .select_related("maxsulot")
-                )
-                if not toliq_guruh:
-                    return JsonResponse({'status': 'error', 'message': 'Retsept tarkibi topilmadi'}, status=404)
+            #     # 2) Shu retsept_nomi + vaqt oralig‘idagi barcha yozuvlar
+            #     toliq_guruh = list(
+            #         Retsept.objects
+            #         .filter(retsept_nomi=item.maxsulot_markasi, date__range=(start, end))
+            #         .select_related("maxsulot")
+            #     )
+            #     if not toliq_guruh:
+            #         return JsonResponse({'status': 'error', 'message': 'Retsept tarkibi topilmadi'}, status=404)
 
-                # 3) Retseptni mahsulot bo‘yicha JAMLAYMIZ (duplikatlar yo‘qolsin)
-                needs = {}     # key = (product_pk, is_sement) -> jami_kerak (int)
-                prod_map = {}  # product_pk -> SkladProducts instance
-                for r in toliq_guruh:
-                    maxsulot_obj = r.maxsulot
-                    is_sement = "sement" in (maxsulot_obj.maxsulot_nomi or "").lower()
-                    kerak_miqdor = Decimal(r.miqdor) * Decimal(item.maxsulot_soni)
-                    key = (maxsulot_obj.pk, is_sement)
-                    needs[key] = needs.get(key, 0) + float(kerak_miqdor)
-                    prod_map[maxsulot_obj.pk] = maxsulot_obj
+            #     # 3) Retseptni mahsulot bo‘yicha JAMLAYMIZ (duplikatlar yo‘qolsin)
+            #     needs = {}     # key = (product_pk, is_sement) -> jami_kerak (int)
+            #     prod_map = {}  # product_pk -> SkladProducts instance
+            #     for r in toliq_guruh:
+            #         maxsulot_obj = r.maxsulot
+            #         is_sement = "sement" in (maxsulot_obj.maxsulot_nomi or "").lower()
+            #         kerak_miqdor = Decimal(r.miqdor) * Decimal(item.maxsulot_soni)
+            #         key = (maxsulot_obj.pk, is_sement)
+            #         needs[key] = needs.get(key, 0) + float(kerak_miqdor)
+            #         prod_map[maxsulot_obj.pk] = maxsulot_obj
 
-                # 4) FIFO bo‘yicha sarf (SkladRetsept dan kamayadi; defitsit bo‘lsa SkladRetseptga yangi batch)
-                jami_tan_narxi = 0
-                for (prod_pk, is_sement), jami_kerak in needs.items():
-                    maxsulot_obj = prod_map[prod_pk]
+            #     # 4) FIFO bo‘yicha sarf (SkladRetsept dan kamayadi; defitsit bo‘lsa SkladRetseptga yangi batch)
+            #     jami_tan_narxi = 0
+            #     for (prod_pk, is_sement), jami_kerak in needs.items():
+            #         maxsulot_obj = prod_map[prod_pk]
 
-                    if is_sement:
-                        total_cost, details = fifo_cost_and_consume(
-                            maxsulot=maxsulot_obj,
-                            kerak_miqdor=jami_kerak,
-                            zavod=item.kamera,    # sementlar zavod kesimida
-                            when=oxirgi_vaqt
-                        )
-                    else:
-                        total_cost, details = fifo_cost_and_consume(
-                            maxsulot=maxsulot_obj,
-                            kerak_miqdor=jami_kerak,
-                            zavod=None,
-                            when=oxirgi_vaqt
-                        )
+            #         if is_sement:
+            #             total_cost, details = fifo_cost_and_consume(
+            #                 maxsulot=maxsulot_obj,
+            #                 kerak_miqdor=jami_kerak,
+            #                 zavod=item.kamera,    # sementlar zavod kesimida
+            #                 when=oxirgi_vaqt
+            #             )
+            #         else:
+            #             total_cost, details = fifo_cost_and_consume(
+            #                 maxsulot=maxsulot_obj,
+            #                 kerak_miqdor=jami_kerak,
+            #                 zavod=None,
+            #                 when=oxirgi_vaqt
+            #             )
                     
-                    for d in details:
-                        DetailXomashyo.objects.create(
-                            maxsulot=item.maxsulot_markasi,   # qaysi beton markasi
-                            xomashyo=maxsulot_obj,            # qaysi xomashyo (sement/qum/shag‘al)
-                            izoh=item.xomashyo_izohi,
-                            miqdori=Decimal(str(d["olingan"])),
-                            narxi_donasi=Decimal(str(d["narxi_donasi"])),
-                            total_narx=Decimal(str(d["olingan"])) * Decimal(str(d["narxi_donasi"])),
-                            zavod=item.kamera,
-                            vaqti=item.date
-                        )
+            #         for d in details:
+            #             DetailXomashyo.objects.create(
+            #                 maxsulot=item.maxsulot_markasi,   # qaysi beton markasi
+            #                 xomashyo=maxsulot_obj,            # qaysi xomashyo (sement/qum/shag‘al)
+            #                 izoh=item.xomashyo_izohi,
+            #                 miqdori=Decimal(str(d["olingan"])),
+            #                 narxi_donasi=Decimal(str(d["narxi_donasi"])),
+            #                 total_narx=Decimal(str(d["olingan"])) * Decimal(str(d["narxi_donasi"])),
+            #                 zavod=item.kamera,
+            #                 vaqti=item.date
+            #             )
 
-                    # === Omborlarni sinxronlashtirish ===
-                    taken_from_stock = sum(d["olingan"] for d in details if not d["is_deficit"])
-                    deficit_qty      = sum(d["olingan"] for d in details if d["is_deficit"])
-                    deficit_price    = next((float(d["narxi_donasi"]) for d in details if d["is_deficit"]), None)
+            #         # === Omborlarni sinxronlashtirish ===
+            #         taken_from_stock = sum(d["olingan"] for d in details if not d["is_deficit"])
+            #         deficit_qty      = sum(d["olingan"] for d in details if d["is_deficit"])
+            #         deficit_price    = next((float(d["narxi_donasi"]) for d in details if d["is_deficit"]), None)
 
-                    # 4.1) Har qanday mahsulot -> SkladProducts dan kamaytirish (faqat real olingan qism)
-                    umumiy_olingan = float(taken_from_stock) + float(deficit_qty or 0)
+            #         # 4.1) Har qanday mahsulot -> SkladProducts dan kamaytirish (faqat real olingan qism)
+            #         umumiy_olingan = float(taken_from_stock) + float(deficit_qty or 0)
 
-                    if umumiy_olingan > 0:
-                        SkladProducts.objects.filter(pk=maxsulot_obj.pk).update(
-                            soni=F("soni") - umumiy_olingan
-                        )
+            #         if umumiy_olingan > 0:
+            #             SkladProducts.objects.filter(pk=maxsulot_obj.pk).update(
+            #                 soni=F("soni") - umumiy_olingan
+            #             )
 
-                    # 4.2) Sement bo‘lsa -> SementZavod dan (shu zavod bo‘yicha) kamaytirish
-                    if is_sement:
-                        # yo‘q bo‘lsa ham yaratiladi (0 dan)
-                        sz, _ = SementZavod.objects.get_or_create(
-                            sement_nomi=maxsulot_obj,
-                            zavod=item.kamera,
-                            defaults={"sement_miqdori": 0}
-                        )
-                        # taken_from_stock + deficit_qty ikkalasini ham hisobga olib ayiramiz
-                        umumiy_olingan = float(taken_from_stock) + float(deficit_qty or 0)
+            #         # 4.2) Sement bo‘lsa -> SementZavod dan (shu zavod bo‘yicha) kamaytirish
+            #         if is_sement:
+            #             # yo‘q bo‘lsa ham yaratiladi (0 dan)
+            #             sz, _ = SementZavod.objects.get_or_create(
+            #                 sement_nomi=maxsulot_obj,
+            #                 zavod=item.kamera,
+            #                 defaults={"sement_miqdori": 0}
+            #             )
+            #             # taken_from_stock + deficit_qty ikkalasini ham hisobga olib ayiramiz
+            #             umumiy_olingan = float(taken_from_stock) + float(deficit_qty or 0)
 
-                        SementZavod.objects.filter(pk=sz.pk).update(
-                            sement_miqdori=F("sement_miqdori") - umumiy_olingan
-                        )
-
-
-                    # 4.3) Yetishmasa — Sklad ga avto-kirim (tolov_turi='N'; yetkazuvchi=zavod nomi)
-                    if deficit_qty and deficit_qty > 0:
-                        yetkazuvchi_obj, _ = SkladYetkazuvchi.objects.get_or_create(
-                            yetkazib_beruvchi=item.kamera.kamera_nomi
-                        )
-                        narx_donasi = float(deficit_price or 0)
-                        jami = float(deficit_qty) * narx_donasi
-
-                        # Sklad.objects.create(
-                        #     maxsulot_nomi=maxsulot_obj,
-                        #     maxsulot_miqdori=float(deficit_qty),
-                        #     maxsulot_narxi=narx_donasi,
-                        #     jami_maxsulot_narxi=jami,
-                        #     tolov_turi='N',
-                        #     yetkazuvchi=yetkazuvchi_obj,
-                        #     zavod=item.kamera,
-                        #     izoh=f"Avtomatik defitsit (Zakaz ID: {item.pk})",
-                        #     sana=timezone.now(),
-                        # )
-                        # Eslatma: defitsit bo‘lgani uchun SkladProducts/SementZavod ni BU YERDA oshirmaymiz.
-                        # Agar bu kirimni real balansga qo‘shmoqchi bo‘lsangiz, shu yerda sonini +deficit_qty qiling.
-
-                    # === /Omborlarni sinxronlashtirish ===
-
-                    jami_tan_narxi += float(total_cost)
-
-                # 5) Tan narxni bir marta yozamiz va all_checked ni belgilaymiz
-                item.maxsulot_tan_narx = float(jami_tan_narxi)
-                item.tan_narxi_qoyildi = True
-                item.all_checked = True
-                item.save(update_fields=["maxsulot_tan_narx", "tan_narxi_qoyildi", "all_checked"])
+            #             SementZavod.objects.filter(pk=sz.pk).update(
+            #                 sement_miqdori=F("sement_miqdori") - umumiy_olingan
+            #             )
 
 
+            #         # 4.3) Yetishmasa — Sklad ga avto-kirim (tolov_turi='N'; yetkazuvchi=zavod nomi)
+            #         if deficit_qty and deficit_qty > 0:
+            #             yetkazuvchi_obj, _ = SkladYetkazuvchi.objects.get_or_create(
+            #                 yetkazib_beruvchi=item.kamera.kamera_nomi
+            #             )
+            #             narx_donasi = float(deficit_price or 0)
+            #             jami = float(deficit_qty) * narx_donasi
 
-            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                return JsonResponse({'status':'ok','selected': item.checked,'jami_tan_narx': item.maxsulot_tan_narx, 'redirect_url': reverse('home')})   # ✅ shu
+            #             # Sklad.objects.create(
+            #             #     maxsulot_nomi=maxsulot_obj,
+            #             #     maxsulot_miqdori=float(deficit_qty),
+            #             #     maxsulot_narxi=narx_donasi,
+            #             #     jami_maxsulot_narxi=jami,
+            #             #     tolov_turi='N',
+            #             #     yetkazuvchi=yetkazuvchi_obj,
+            #             #     zavod=item.kamera,
+            #             #     izoh=f"Avtomatik defitsit (Zakaz ID: {item.pk})",
+            #             #     sana=timezone.now(),
+            #             # )
+            #             # Eslatma: defitsit bo‘lgani uchun SkladProducts/SementZavod ni BU YERDA oshirmaymiz.
+            #             # Agar bu kirimni real balansga qo‘shmoqchi bo‘lsangiz, shu yerda sonini +deficit_qty qiling.
+
+            #         # === /Omborlarni sinxronlashtirish ===
+
+            #         jami_tan_narxi += float(total_cost)
+
+            #     # 5) Tan narxni bir marta yozamiz va all_checked ni belgilaymiz
+            #     item.maxsulot_tan_narx = float(jami_tan_narxi)
+            #     item.tan_narxi_qoyildi = True
+            #     item.all_checked = True
+            #     item.save(update_fields=["maxsulot_tan_narx", "tan_narxi_qoyildi", "all_checked"])
+
+
+
+            # if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            #     return JsonResponse({'status':'ok','selected': item.checked,'jami_tan_narx': item.maxsulot_tan_narx, 'redirect_url': reverse('home')})   # ✅ shu
             
+
+            if request.headers.get("x-requested-with") == "XMLHttpRequest":
+                return JsonResponse({
+                    "status": "ok",
+                    "redirect_url": reverse("home")
+                })
+
             return redirect('home')
     else:
         form = AddProductForm()
@@ -1811,44 +1982,47 @@ def change_product(request, pk):
 
 @login_required
 def delete_product(request, pk):
-    item = get_object_or_404(Asosiy, pk=pk)
+    print(pk)
+    zakaz = Asosiy.objects.get(id=pk)
+    sana = zakaz.date 
+    start = sana - timedelta(minutes=1)
+    end = sana + timedelta(minutes=1)
+    zakaz_details = DetailXomashyo.objects.filter(vaqti__range=(start, end))
+    xomashyo_list = {}
+    for zakaz_detail in zakaz_details:
+        key = (zakaz_detail.xomashyo.maxsulot_nomi, zakaz_detail.zavod.kamera_nomi)
+        value = float(zakaz_detail.miqdori)
 
-    oxirgi_vaqt = item.date
+        xomashyo_list[key] = value
 
-    start_time = oxirgi_vaqt - timedelta(minutes=1)
-    end_time   = oxirgi_vaqt + timedelta(minutes=1)
+        xomashyo = SkladProducts.objects.get(maxsulot_nomi=zakaz_detail.xomashyo)
+        xomashyo.soni += float(zakaz_detail.miqdori)
+        xomashyo.save()
 
+        xomashyo__o = XomashyoZavod.objects.get(xomashyo_nomi=zakaz_detail.xomashyo, zavod=zakaz_detail.zavod)
+        xomashyo__o.xomashyo_miqdori += float(zakaz_detail.miqdori)
+        xomashyo__o.save()
+        zakaz_detail.delete()
 
+    print(xomashyo_list)
+    
+    if zakaz.tashkilot_nomi:
+        obyekt = PriObyekts.objects.get(id=zakaz.obyekt_id)
+    else:
+        obyekt = NaqdObyekts.objects.get(id=zakaz.obyekt_id)
 
-    toliq_guruh = DetailXomashyo.objects.filter(
-        vaqti__range=(start_time, end_time)
-    )
-
-    for guruh in toliq_guruh:
-        if guruh.xomashyo.maxsulot_nomi == "Sement":
-            sement = SementZavod.objects.get(sement_nomi=guruh.xomashyo, zavod=guruh.zavod)
-            
-            sement.sement_miqdori += float(guruh.miqdori)
-            
-            sement.save()
-        
-        
-
-        mahsulot = SkladProducts.objects.get(pk=guruh.xomashyo.pk)
-
-        mahsulot.soni += float(guruh.miqdori)
-
-        mahsulot.save()
-
-
-    toliq_guruh.delete() 
-
-
+    start = start.astimezone(ZoneInfo("Asia/Tashkent")).replace(tzinfo=None)
+    end = end.astimezone(ZoneInfo("Asia/Tashkent")).replace(tzinfo=None)
+    obyekt = obyekt.obyekt_name
+    agent = zakaz.kim_tomonidan_jonatilgani.full_name
     
 
+    delete_from_excel(agent, obyekt, start, end)
 
-    item.delete()
-    # return HttpResponseRedirect(reverse('home'))
+    print("DELETE FROM EXCEL ISHLADI")
+    print(agent, obyekt, start, end)
+
+    zakaz.delete()
     return JsonResponse({"status": "ok"})
 
 
@@ -2125,18 +2299,40 @@ def add_kirim(request):
 
 @login_required
 def sklad_products_list(request):
-    barcha_maxsulotlar = SkladProducts.objects.exclude(maxsulot_nomi="Sement")
-    barcha_sementlar = SementZavod.objects.all()
+    xomashyo__names = SkladProducts.objects.all()
 
-    umumiy_sement = barcha_sementlar.aggregate(total=Sum("sement_miqdori"))["total"] or 0
+
+    
+
+    barcha_maxsulotlar = SkladProducts.objects.exclude(maxsulot_nomi="Sement")
+    barcha_sementlar = XomashyoZavod.objects.all()
+
+    umumiy_sement = barcha_sementlar.aggregate(total=Sum("xomashyo_miqdori"))["total"] or 0
 
 
     context = {
         "maxsulotlar": barcha_maxsulotlar,
         "sementlar": barcha_sementlar,
-        "total_sement": umumiy_sement
+        "total_sement": umumiy_sement,
+        "xomashyolar": xomashyo__names
     }
     return render(request, "sklad_list.html", context)
+
+@login_required
+def get__zavod(request, xomashyo__id):
+    xomashyos = XomashyoZavod.objects.filter(xomashyo_nomi_id=xomashyo__id)
+
+    data = []
+
+    for xomashyo in xomashyos:
+        data.append({
+            "xomashyo": xomashyo.xomashyo_nomi.maxsulot_nomi,
+            "zavod": xomashyo.zavod.kamera_nomi,   # <-- to‘g‘ri field yozing
+            "miqdor": xomashyo.xomashyo_miqdori
+        })
+
+    return JsonResponse(data, safe=False)
+
 
 
 @login_required
@@ -2158,40 +2354,45 @@ def add_sklad_products(request):
 
 
             # 🔹 SkladProducts yangilash
-            product = sklad.maxsulot_nomi
-            product.soni += sklad.maxsulot_miqdori
-            product.save()
+            xomashyo = XomashyoZavod.objects.get(xomashyo_nomi = sklad.maxsulot_nomi, zavod = sklad.zavod)
+            mahsulot = SkladProducts.objects.get(maxsulot_nomi=sklad.maxsulot_nomi)
+            xomashyo.xomashyo_miqdori += sklad.maxsulot_miqdori
+            mahsulot.soni += sklad.maxsulot_miqdori
+            xomashyo.save()
+            mahsulot.save()
+            SkladRetsept.objects.create(maxsulot=sklad.maxsulot_nomi, zavod=sklad.zavod, keltirilgan_miqdor=sklad.maxsulot_miqdori, qancha_qolgani=sklad.maxsulot_miqdori, narxi_donasi=sklad.maxsulot_narxi)
 
             
 
             # 🔹 SementZavod yangilash
-            if "sement" in product.maxsulot_nomi.lower():
-                obj, created = SementZavod.objects.get_or_create(
-                    sement_nomi=product,
-                    zavod=sklad.zavod,
-                    defaults={"sement_miqdori": sklad.maxsulot_miqdori}
-                )
-                if not created:
-                    obj.sement_miqdori += sklad.maxsulot_miqdori
-                    obj.save()
+            # if "sement" in product.maxsulot_nomi.lower():
+            #     obj, created = SementZavod.objects.get_or_create(
+            #         sement_nomi=product,
+            #         zavod=sklad.zavod,
+            #         defaults={"sement_miqdori": sklad.maxsulot_miqdori}
+            #     )
+            #     if not created:
+            #         obj.sement_miqdori += sklad.maxsulot_miqdori
+            #         obj.save()
                 
-                SkladRetsept.objects.create(
-                    maxsulot = sklad.maxsulot_nomi,
-                    zavod = sklad.zavod,
-                    keltirilgan_miqdor = sklad.maxsulot_miqdori,
-                    qancha_qolgani = sklad.maxsulot_miqdori,
-                    narxi_donasi = sklad.maxsulot_narxi,
-                    olingan_sana = sklad.sana
-                )
+            #     SkladRetsept.objects.create(
+            #         maxsulot = sklad.maxsulot_nomi,
+            #         zavod = sklad.zavod,
+            #         keltirilgan_miqdor = sklad.maxsulot_miqdori,
+            #         qancha_qolgani = sklad.maxsulot_miqdori,
+            #         narxi_donasi = sklad.maxsulot_narxi,
+            #         olingan_sana = sklad.sana
+            #     )
             
-            else:
-                SkladRetsept.objects.create(
-                    maxsulot = sklad.maxsulot_nomi,
-                    keltirilgan_miqdor = sklad.maxsulot_miqdori,
-                    qancha_qolgani = sklad.maxsulot_miqdori,
-                    narxi_donasi = sklad.maxsulot_narxi,
-                    olingan_sana = sklad.sana
-                )
+            # else:
+            #     SkladRetsept.objects.create(
+            #         maxsulot = sklad.maxsulot_nomi,
+            #         keltirilgan_miqdor = sklad.maxsulot_miqdori,
+            #         qancha_qolgani = sklad.maxsulot_miqdori,
+            #         narxi_donasi = sklad.maxsulot_narxi,
+            #         olingan_sana = sklad.sana
+            #     )
+
 
             return redirect('sklad_products')
         else:

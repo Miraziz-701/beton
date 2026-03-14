@@ -96,7 +96,11 @@
                         {% endif %}
                     </td>
                     <td>
-                        {{ data.mijoz }}
+                      {% if data.tashkilot_nomi %}
+                        {{ data.tashkilot_nomi }}
+                      {% else %}
+                        {{ data.kim_tomonidan_jonatilgani }}
+                      {% endif %}
                     </td>
                     <td>
                         {{ data.kim_tomonidan_jonatilgani }}

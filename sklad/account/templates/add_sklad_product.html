@@ -91,7 +91,7 @@
                     </div>
                 </div>
 
-                <div class="mb-3" id="zavod-field" style="display: none;">
+                <div class="mb-3" id="zavod-field">
                     <label for="{{ form.zavod.id_for_label }}" class="form-label">Zavodni tanlang</label>
                     {{ form.zavod }}
                 </div>
@@ -167,15 +167,6 @@
     document.addEventListener("DOMContentLoaded", function () {
         const mahsulotSelect = document.getElementById("nomi");
         const zavodField = document.getElementById("zavod-field");
-
-        function toggleZavod() {
-            let selected = mahsulotSelect.options[mahsulotSelect.selectedIndex].text.toLowerCase();
-            if (selected.includes("sement")) {
-                zavodField.style.display = "block";
-            } else {
-                zavodField.style.display = "none";
-            }
-        }
 
         mahsulotSelect.addEventListener("change", toggleZavod);
         toggleZavod(); // sahifa yuklanganda ham tekshiradi

@@ -5,7 +5,7 @@ add_xojayin, guruh_mashina_qoshish, kassa_login, kirim_hisobot, add_kirim, chang
 xaridordan_kirim_hisobot, sklad_products_list, add_sklad_products, add_yetkazib_beruvchi, add_retsept, sklad_hisobot,
 retsept_list, haydovchi_chiqim, change_haydovchi_narx, add_haydovchi_narx, chiqim_hisobot, umumiy_chiqim, add_chiqim, 
 ishchilar_davomati, add_ishchi, ishchilar_royxati, add_kelmagan_ishchilar, add_ortiqcha_xarajat, set_mijoz_narx, add_otkat, 
-enter_mijoz_summa, maxsulot_tan_narx, toggle_selected, check_home, add_test_product, tashkilot_by_agent)
+enter_mijoz_summa, maxsulot_tan_narx, toggle_selected, check_home, add_test_product, tashkilot_by_agent, get__zavod)
 
 urlpatterns = [
     path('', login, name='login'),
@@ -54,6 +54,8 @@ urlpatterns = [
     path('maxsulot/<int:zakaz_id>/',  maxsulot_tan_narx, name='maxsulot_tan_narx'),
     path('check/home/', check_home, name='check_home'),
     path('ajax/tashkilot-by-agent/', tashkilot_by_agent, name='tashkilot_by_agent'),
-    path('ajax/obyekt-by-agent/', obyekt_by_agent, name='obyekt_by_agent')
+    path('ajax/obyekt-by-agent/', obyekt_by_agent, name='obyekt_by_agent'),
+    path('get/<int:xomashyo__id>/', get__zavod, name='get_zavod'),
+
 
 ]

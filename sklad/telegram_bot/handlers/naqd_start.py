@@ -1,8 +1,8 @@
 from loader import disp, bot
-from aiogram.filters import CommandStart
+from aiogram.filters import CommandStart, Command
 from aiogram.types import Message, ReplyKeyboardRemove, CallbackQuery
-from keyboards.reply_keyboard.start_keyboard import order, check, check_obyekt, order_type
-from keyboards.inline_keyboard.products_keyboard import inline_products, inline_naqd_obyekts
+from keyboards.reply_keyboard.start_keyboard import order, check, check_obyekt, order_type, product_type
+from keyboards.inline_keyboard.products_keyboard import inline_products, inline_naqd_obyekts, inline_xomashyos
 from aiogram import F
 from aiogram.fsm.context import FSMContext
 from states import Zakaz, Naqd
@@ -17,7 +17,7 @@ from decimal import Decimal, InvalidOperation
 @disp.message(F.text == '🛒 Buyurtma berish')
 async def start_order(message: Message, state: FSMContext):
     await state.set_state(Zakaz.mijoz)
-    await message.answer('Biror bir tugmani tanlang', reply_markup=order_type)
+    await message.answer("To'lov turini tanlang", reply_markup=order_type)
 
 
 # naqd
@@ -29,15 +29,33 @@ async def naqd_pul(message: Message):
 @disp.message(F.text == '📍 Mavjud obyektlar')
 async def see_obyekts(message: Message):
     await message.answer("Mavjud obyektlar", reply_markup=ReplyKeyboardRemove())
-    await message.answer("Tanlang", reply_markup=await inline_naqd_obyekts())
+    await message.answer("Tanlang", reply_markup=await inline_naqd_obyekts(message.from_user.id))
 
-@disp.callback_query(F.data.startswith("naqd_obyekt:"))
+@disp.callback_query(F.data.startswith("naqd_obyekt:"), ~Command("start"))
 async def check_obyekts(call: CallbackQuery, state: FSMContext):
     obyekt = call.data.split(":", 1)[1]
     await state.update_data(obyekt=obyekt)
     await state.update_data(address_need=True)
-    await call.message.delete_reply_markup()
-    await call.message.answer("Mavjud mahsulotlar", reply_markup=await inline_products())
+    await call.message.edit_reply_markup(reply_markup=None)
+    await call.message.answer("Birini tanlang", reply_markup=product_type)
+    await state.set_state(Naqd.product_type)
+
+@disp.message(Naqd.product_type, F.text == "Mahsulot")
+async def product_start(message: Message, state: FSMContext):
+    await state.update_data(product_type="Mahsulot")
+
+    # OLDINGI REPLY KEYBOARDNI YOPISH
+    await message.answer("✅ Tanlandi: Mahsulot", reply_markup=ReplyKeyboardRemove())
+
+    # KEYINGI INLINE MENYU / RO'YXAT
+    await message.answer("Mavjud mahsulotlar", reply_markup=await inline_products())
+    await state.set_state(Naqd.product)
+
+@disp.message(Naqd.product_type, F.text == "Xomashyo")
+async def product_start(message: Message, state: FSMContext):
+    await state.update_data(product_type="Xomashyo")
+    await message.answer("✅ Tanlandi: Xomashyo" , reply_markup=ReplyKeyboardRemove())
+    await message.answer("Mavjud xomashyolar", reply_markup=await inline_xomashyos())
     await state.set_state(Naqd.product)
 
 
@@ -46,69 +64,88 @@ async def add_obyekt(message: Message, state: FSMContext):
     await message.answer('Obyekt nomi', reply_markup=ReplyKeyboardRemove())
     await state.set_state(Naqd.obyekt)
 
-@disp.message(Naqd.obyekt)
+@disp.message(Naqd.obyekt, ~Command("start"))
 async def enter_product(message: Message, state: FSMContext):
     await state.update_data(obyekt=message.text.title())
     await state.update_data(address_need=False)
-    await message.answer('Mavjud mahsulotlar', reply_markup=await inline_products())
-    await state.set_state(Naqd.product)
+    await message.answer('Birini tanlang', reply_markup=product_type)
+    await state.set_state(Naqd.product_type)
 
-@disp.callback_query(F.data.startswith("product:"), Naqd.product)
+    
+    # await message.answer('Mavjud mahsulotlar', reply_markup=await inline_products())
+    # await state.set_state(Naqd.product)
+
+@disp.callback_query(F.data.startswith("product:"), Naqd.product, ~Command("start"))
 async def miqdori(call: CallbackQuery, state: FSMContext):
     product = call.data.split(":", 1)[1]
     await state.update_data(product=product)
     await state.set_state(Naqd.miqdori)
     await call.message.delete_reply_markup()
-    await call.message.answer(f'{product}\n\nSonini kiriting')
+    await call.message.answer(f'{product}\n\nMiqdorini kiriting')
     
 
-@disp.message(Naqd.miqdori)
+@disp.message(Naqd.miqdori, ~Command("start"))
 async def check_miqdori(message: Message, state: FSMContext):
     try:
         miqdor = Decimal(message.text.replace(',', '.'))
+        
         if miqdor <= 0:
             await message.answer("0 dan katta son kiriting")
             await state.set_state(Naqd.miqdori)
+            
         await state.update_data(miqdori=float(miqdor))
         await state.set_state(Naqd.price)
         await message.answer("Kelishilgan narxni kiriting")
     
     except InvalidOperation:
         await message.answer("Miqdori raqamlardan iborat bo'ladi")
-        await state.set_state(Naqd.price)   
+        await state.set_state(Naqd.miqdori)   
 
 
-@disp.message(Naqd.price)
+@disp.message(Naqd.price, ~Command("start"))
 async def enter_price(message: Message, state: FSMContext):
-    clean = "".join(message.text.split())
-
+    clean = message.text.replace(" ", "")
+    
+    datas = await state.get_data()
+    
+    product_type = datas['product_type']
+    
 
     if clean.isdigit():
-        if len(clean) <= 5:
-            await message.answer("To'liq narxni yozing")
-        else:    
-            await state.update_data(price=message.text)
-            await state.set_state(Naqd.time)
-            await message.answer("Yetkazib berish vaqtini yozing")
+        if product_type == "Xomashyo":
+            if len(clean) <= 2:
+                await message.answer("To'liq narxni yozing")
+            else:
+                await state.update_data(price=int(clean))
+                await state.set_state(Naqd.time)
+                await message.answer("Yetkazib berish vaqtini yozing")
+        else:
+            if len(clean) <= 5:
+                await message.answer("To'liq narxni yozing")
+            else:
+                await state.update_data(price=int(clean))
+                await state.set_state(Naqd.time)
+                await message.answer("Yetkazib berish vaqtini yozing")
+
     else: 
         await message.answer("Narx raqamlardan iborat bo'ladi")
-        await state.set_state(Naqd.miqdori)
+        await state.set_state(Naqd.price)
 
-@disp.message(Naqd.time)
+@disp.message(Naqd.time, ~Command("start"))
 async def enter_date(message: Message, state: FSMContext):
     await state.update_data(time=message.text.title())
     await message.answer("Qanday tartibda yetkazib beriladi?")
     await state.set_state(Naqd.description)
 
-@disp.message(Naqd.description)
+@disp.message(Naqd.description, ~Command("start"))
 async def enter_tartib(message: Message, state: FSMContext):
     await state.update_data(description=message.text.title())
     await message.answer("Obyektning aloqa uchun telefon raqami\n\nMisol uchun raqam:\n<b>977010101</b>")
     await state.set_state(Naqd.phone_number)
 
-@disp.message(Naqd.phone_number)
+@disp.message(Naqd.phone_number, ~Command("start"))
 async def enter_phonenumber(message: Message, state: FSMContext):
-    clean = "".join(message.text.split())
+    clean = message.text.replace(" ", "")
 
 
     if not clean.isdigit():
@@ -169,7 +206,7 @@ Joylashuvi: {location_name}
 
                 
 
-@disp.message(Naqd.address_full)
+@disp.message(Naqd.address_full, ~Command("start"))
 async def enter_address(message: Message, state: FSMContext):
     if message.text and (message.text.startswith("https://www.google.com/maps?q=") or message.text.startswith("https://maps.google.com/") or message.text.startswith("https://www.google.com/maps/place/")):
         await state.update_data(address_full=message.text)
@@ -321,11 +358,12 @@ Joylashuvi: {address}
         )
         await state.set_state(Naqd.address_full)
 
-@disp.message(Naqd.status, F.text == "✅")
+@disp.message(Naqd.status, ~Command("start"), F.text == "✅")
 async def end_mijoz(message: Message, state: FSMContext):
     datas = await state.get_data()
     obyekt = datas['obyekt']
     address_need = datas['address_need']
+    product_type = datas['product_type']
     product = datas['product']
     miqdori = datas['miqdori']
     price = datas['price']
@@ -340,8 +378,13 @@ async def end_mijoz(message: Message, state: FSMContext):
     if not address_need is True:
         await data.add_naqd_obyekt(obyekt, address, address_full, address_lat, address_lon) 
 
-    await data.add_order(await data.select_agent_id(message.from_user.id), "Naqd", await data.select_naqd_obyekt_id(obyekt), await data.see_product_id(product), miqdori, price, time, description, phone_number)
+    if product_type == "Mahsulot":
+        await data.add_order(await data.select_agent_id(message.from_user.id), "Naqd", await data.select_naqd_obyekt_id(obyekt), await data.see_product_id(product), "", miqdori, price, time, description, phone_number)
+    else:
+        await data.add_order(await data.select_agent_id(message.from_user.id), "Naqd", await data.select_naqd_obyekt_id(obyekt), "", await data.see_product_id(product), miqdori, price, time, description, phone_number)
 
+
+    
     await bot.send_message(
         chat_id=CHAT_ID,
         text = f"""
@@ -379,9 +422,9 @@ Lokatsiyasi 👇:
 
     await state.clear()
 
-@disp.message(Naqd.status, F.text == "❌")
+@disp.message(Naqd.status, ~Command("start"), F.text == "❌")
 async def again_register(message: Message, state: FSMContext):
-    await message.answer("Mijozning ism familyasini kiriting", reply_markup=ReplyKeyboardRemove())
+    await message.answer("Obyekt nomini qaytadan kiriting", reply_markup=ReplyKeyboardRemove())
     await state.set_state(Naqd.obyekt)
 
 # prichesliniya

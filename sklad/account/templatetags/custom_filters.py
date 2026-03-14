@@ -8,7 +8,7 @@ def get_item(dictionary, key):
 @register.filter
 def space_separate(value):
     try:
-        return f"{int(value):,}".replace(",", " ")
+        return f"{value:,.2f}".replace(",", " ")
     except (ValueError, TypeError):
         return value
     

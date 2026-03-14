@@ -1,6 +1,6 @@
 from django.contrib import admin
 from account.models import (Jonativchi,  Mijoz, Obyekt, Asosiy, Kamera, Guruh, Mashina, KirimTuri, User, SkladProducts, Orders,
-SkladYetkazuvchi, ChiqimTuri, ChiqimTotal, Ishchi, SkladRetsept, SementZavod, Sklad, Retsept, DetailXomashyo, BetonMarkasi, NaqdObyekts, PriObyekts)
+SkladYetkazuvchi, ChiqimTuri, ChiqimTotal, Ishchi, SkladRetsept, XomashyoZavod, Sklad, Retsept, DetailXomashyo, BetonMarkasi, NaqdObyekts, PriObyekts)
 
 # Register your models here.
 
@@ -19,7 +19,7 @@ admin.site.register(ChiqimTuri)
 admin.site.register(ChiqimTotal)
 admin.site.register(Ishchi)
 admin.site.register(SkladRetsept)
-admin.site.register(SementZavod)
+admin.site.register(XomashyoZavod)
 admin.site.register(Sklad)
 admin.site.register(Retsept)    
 admin.site.register(DetailXomashyo)

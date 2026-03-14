@@ -1,5 +1,5 @@
 from loader import disp
-from aiogram.filters import CommandStart
+from aiogram.filters import CommandStart, StateFilter
 from aiogram.types import Message, ReplyKeyboardRemove
 from account.models import data
 from keyboards.reply_keyboard.start_keyboard import order, check
@@ -8,8 +8,14 @@ from states import Agent
 from aiogram import F
 
 
-@disp.message(CommandStart())
+@disp.message(CommandStart(), StateFilter("*"))
 async def check_agent(message: Message, state: FSMContext):
+    if message.chat.type != "private":
+        await message.answer("Buyurtma berish uchun botga yozing 👉 @asad_beton_bot")
+        return
+    
+    await state.clear()
+    
     if await data.check_agent(message.from_user.id):
         await message.answer("Buyurtma berish uchun pastdagi tugmani bosing", reply_markup=order)
     else:

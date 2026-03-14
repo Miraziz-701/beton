@@ -13,6 +13,20 @@ order_type = ReplyKeyboardMarkup(
     is_persistent=True
 )
 
+
+product_type = ReplyKeyboardMarkup(
+    keyboard=[
+        [
+            KeyboardButton(text="Xomashyo"),
+            KeyboardButton(text="Mahsulot")
+        ]
+    ],
+
+    resize_keyboard=True,
+    is_persistent=True
+)
+
+
 order = ReplyKeyboardMarkup(
     keyboard=[
         [

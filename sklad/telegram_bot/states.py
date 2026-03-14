@@ -16,6 +16,7 @@ class Naqd(StatesGroup):
     obyekt = State()
     # check
     address_need = State()
+    product_type = State()
     product = State()
     miqdori = State()
     price = State()
@@ -35,6 +36,7 @@ class Pri(StatesGroup):
     # main
     address_need = State()
     tashkilot = State()
+    product_type = State()
     product = State()
     miqdori = State()
     price = State()

@@ -439,14 +439,6 @@ class AddSkladProductsForm(forms.ModelForm):
         })
     )
 
-    def clean_maxsulot_narxi(self):
-        value = self.cleaned_data['maxsulot_narxi']
-        # probellarni olib tashlaymiz
-        value = value.replace(" ", "")
-        if not value.isdigit():
-            raise forms.ValidationError("Faqat raqam kiriting")
-        return int(value)
-
     tolov_turi = forms.ChoiceField(
         choices=Sklad.TOLOV_CHOICE,
         widget=forms.RadioSelect(attrs={
@@ -467,7 +459,6 @@ class AddSkladProductsForm(forms.ModelForm):
 
     zavod = forms.ModelChoiceField(
         queryset=Kamera.objects.all(),
-        required=False,   # ❗ muhim
         empty_label="Zavod",
         widget=forms.Select(attrs={
             'class': 'form-select',
@@ -494,26 +485,20 @@ class AddSkladProductsForm(forms.ModelForm):
             'id': 'sana'
         })
     )
+
+    def clean_maxsulot_narxi(self):
+        value = self.cleaned_data.get("maxsulot_narxi")
+
+        if value:
+            value = value.replace(" ", "")
+            return int(value)
+
+        return value
     
     class Meta:
         model = Sklad
         fields = ('maxsulot_nomi', 'maxsulot_miqdori', 'maxsulot_narxi', 'tolov_turi', 'yetkazuvchi', 'zavod', 'izoh', 'sana')
 
-    
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        # POST yoki GET dan qiymat olingan bo'lsa tekshiramiz
-        data = self.data or self.initial
-        if data.get('maxsulot_nomi'):
-            try:
-                maxsulot = SkladProducts.objects.get(pk=data['maxsulot_nomi'])
-                if maxsulot.maxsulot_nomi.lower() == "sement":
-                    self.fields['zavod'].required = True
-                else:
-                    self.fields['zavod'].required = False
-            except SkladProducts.DoesNotExist:
-                self.fields['zavod'].required = False
 
 
 class AddYetkazibBeruvchiForm(forms.ModelForm):
